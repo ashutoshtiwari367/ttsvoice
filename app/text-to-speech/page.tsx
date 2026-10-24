@@ -3,7 +3,7 @@ import TTSWorkspace from "@/components/tts/TTSWorkspace";
 import { siteConfig } from "@/config/site";
 
 export const metadata: Metadata = {
-  title: `${siteConfig.name} — AI Text to Speech Studio`,
+  title: `${siteConfig.name} V1.5.1 — AI Text to Speech Studio`,
   description: "Generate lifelike Indian and global AI speech with neural voice avatars.",
 };
 

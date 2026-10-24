@@ -84,8 +84,11 @@ export default function ScriptEditor({
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-zinc-800/80 px-6 py-4 bg-slate-50/50 dark:bg-white/[0.02]">
         <div className="flex items-center gap-2">
           <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-sm font-extrabold text-slate-900 dark:text-white">
-            Al Voice Studio
+          <span className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+            <span>Al Voice Studio</span>
+            <span className="rounded-md bg-orange-500/10 dark:bg-orange-950/60 px-1.5 py-0.2 text-[10px] font-black text-[#ff5500] dark:text-orange-400 border border-orange-500/25">
+              V1.5.1
+            </span>
           </span>
           <span className="hidden sm:inline text-xs text-slate-400 dark:text-zinc-500 font-medium">
             - Real-Time Neural Speech
@@ -98,7 +101,7 @@ export default function ScriptEditor({
           </span>
 
           <span className="rounded-full bg-orange-500/10 px-3 py-1 text-xs font-bold text-[#ff5500] dark:text-orange-400 border border-orange-500/20">
-            v2.0 Neural Engine
+            V1.5.1 Neural Engine
           </span>
         </div>
       </div>
