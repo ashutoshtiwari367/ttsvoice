@@ -15,4 +15,12 @@ export const r2Storage: AudioStorage = {
       ContentType: contentType, CacheControl: 'public, max-age=31536000, immutable' }));
   },
   async url(key) { return `${process.env.R2_PUBLIC_BASE}/${key}`; },
+  async delete(key) {
+    try {
+      const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+      await client().send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key }));
+    } catch (err) {
+      console.warn('r2_storage_delete_failed', key, err);
+    }
+  },
 };

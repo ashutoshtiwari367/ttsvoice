@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import CountryFlag from "@/components/ui/CountryFlag";
+import { useEffect, useState, useRef } from "react";
+import Image from "next/image";
 
 export interface Voice {
   id: string;
@@ -14,6 +14,7 @@ export interface Voice {
 export interface Language {
   code: string;
   label: string;
+  flag: string;
   voices: Voice[];
 }
 
@@ -26,207 +27,125 @@ interface VoiceControlsProps {
   onSpeedChange: (speed: number) => void;
 }
 
-// 20+ Indian & Global Languages with voices
 export const ALL_LANGUAGES_CATALOG: Language[] = [
   {
     code: "hi-IN",
-    label: "🇮🇳 Hindi (हिन्दी)",
+    label: "Hindi (हिन्दी)",
+    flag: "🇮🇳",
     voices: [
-      { id: "hi-IN-Wavenet-A", label: "Aditi (अदिति)", gender: "female", tier: "free" },
       { id: "hi-IN-Wavenet-B", label: "Arjun (अर्जुन)", gender: "male", tier: "free" },
-      { id: "hi-IN-Wavenet-C", label: "Priya (प्रिया)", gender: "female", tier: "free" },
+      { id: "hi-IN-Wavenet-A", label: "Aditi (अदिति)", gender: "female", tier: "free" },
       { id: "hi-IN-Wavenet-D", label: "Rohit (रोहित)", gender: "male", tier: "free" },
-      { id: "hi-IN-Neural2-A", label: "Ananya Studio (अनन्या)", gender: "female", tier: "paid" },
+      { id: "hi-IN-Wavenet-C", label: "Priya (प्रिया)", gender: "female", tier: "free" },
       { id: "hi-IN-Neural2-B", label: "Kabir Studio (कबीर)", gender: "male", tier: "paid" },
+      { id: "hi-IN-Neural2-A", label: "Ananya Studio (अनन्या)", gender: "female", tier: "paid" },
     ],
   },
   {
     code: "en-IN",
-    label: "🇮🇳 Indian English",
+    label: "Indian English",
+    flag: "🇮🇳",
     voices: [
-      { id: "en-IN-Wavenet-A", label: "Isha (Natural & Smooth)", gender: "female", tier: "free" },
       { id: "en-IN-Wavenet-B", label: "Dev (Corporate & News)", gender: "male", tier: "free" },
-      { id: "en-IN-Wavenet-C", label: "Meera (Youthful Voice)", gender: "female", tier: "free" },
+      { id: "en-IN-Wavenet-A", label: "Isha (Natural & Smooth)", gender: "female", tier: "free" },
       { id: "en-IN-Wavenet-D", label: "Rohan (Friendly & Tech)", gender: "male", tier: "free" },
+      { id: "en-IN-Wavenet-C", label: "Meera (Youthful Voice)", gender: "female", tier: "free" },
       { id: "en-IN-Neural2-A", label: "Aarav Ultra (Pro Voiceover)", gender: "male", tier: "paid" },
     ],
   },
   {
     code: "ta-IN",
-    label: "🇮🇳 Tamil (தமிழ்)",
+    label: "Tamil (தமிழ்)",
+    flag: "🇮🇳",
     voices: [
-      { id: "ta-IN-Wavenet-A", label: "Vani (வாணி)", gender: "female", tier: "free" },
       { id: "ta-IN-Wavenet-B", label: "Karthik (கார்த்திக்)", gender: "male", tier: "free" },
+      { id: "ta-IN-Wavenet-A", label: "Vani (வாணி)", gender: "female", tier: "free" },
       { id: "ta-IN-Wavenet-C", label: "Deepa (தீபா)", gender: "female", tier: "free" },
     ],
   },
   {
     code: "te-IN",
-    label: "🇮🇳 Telugu (తెలుగు)",
+    label: "Telugu (తెలుగు)",
+    flag: "🇮🇳",
     voices: [
-      { id: "te-IN-Standard-A", label: "Lakshmi (లక్ష్మి)", gender: "female", tier: "free" },
       { id: "te-IN-Standard-B", label: "Suresh (సురేష్)", gender: "male", tier: "free" },
+      { id: "te-IN-Standard-A", label: "Lakshmi (లక్ష్మి)", gender: "female", tier: "free" },
     ],
   },
   {
     code: "mr-IN",
-    label: "🇮🇳 Marathi (मराठी)",
+    label: "Marathi (मराठी)",
+    flag: "🇮🇳",
     voices: [
-      { id: "mr-IN-Wavenet-A", label: "Sai (साई)", gender: "female", tier: "free" },
       { id: "mr-IN-Wavenet-B", label: "Aniket (अनिकेत)", gender: "male", tier: "free" },
+      { id: "mr-IN-Wavenet-A", label: "Sai (साई)", gender: "female", tier: "free" },
       { id: "mr-IN-Wavenet-C", label: "Tanvi (तन्वी)", gender: "female", tier: "free" },
     ],
   },
   {
     code: "bn-IN",
-    label: "🇮🇳 Bengali (বাংলা)",
+    label: "Bengali (বাংলা)",
+    flag: "🇮🇳",
     voices: [
-      { id: "bn-IN-Wavenet-A", label: "Tithi (তিথি)", gender: "female", tier: "free" },
       { id: "bn-IN-Wavenet-B", label: "Subir (সুবীর)", gender: "male", tier: "free" },
+      { id: "bn-IN-Wavenet-A", label: "Tithi (তিথি)", gender: "female", tier: "free" },
     ],
   },
   {
     code: "gu-IN",
-    label: "🇮🇳 Gujarati (ગુજરાતી)",
+    label: "Gujarati (ગુજરાતી)",
+    flag: "🇮🇳",
     voices: [
-      { id: "gu-IN-Wavenet-A", label: "Dhara (ધારા)", gender: "female", tier: "free" },
       { id: "gu-IN-Wavenet-B", label: "Harish (હરીશ)", gender: "male", tier: "free" },
+      { id: "gu-IN-Wavenet-A", label: "Dhara (ધારા)", gender: "female", tier: "free" },
     ],
   },
   {
     code: "kn-IN",
-    label: "🇮🇳 Kannada (ಕನ್ನಡ)",
+    label: "Kannada (ಕನ್ನಡ)",
+    flag: "🇮🇳",
     voices: [
-      { id: "kn-IN-Wavenet-A", label: "Sharada (ಶಾರದಾ)", gender: "female", tier: "free" },
       { id: "kn-IN-Wavenet-B", label: "Chetan (ಚೇತನ್)", gender: "male", tier: "free" },
+      { id: "kn-IN-Wavenet-A", label: "Sharada (ಶಾರದಾ)", gender: "female", tier: "free" },
     ],
   },
   {
     code: "ml-IN",
-    label: "🇮🇳 Malayalam (മലയാളം)",
+    label: "Malayalam (മലയാളം)",
+    flag: "🇮🇳",
     voices: [
-      { id: "ml-IN-Wavenet-A", label: "Anjali (അഞ്ജലി)", gender: "female", tier: "free" },
       { id: "ml-IN-Wavenet-B", label: "Vishnu (വിഷ്ണു)", gender: "male", tier: "free" },
+      { id: "ml-IN-Wavenet-A", label: "Anjali (അഞ്ജലി)", gender: "female", tier: "free" },
     ],
   },
   {
     code: "pa-IN",
-    label: "🇮🇳 Punjabi (ਪੰਜਾਬੀ)",
+    label: "Punjabi (ਪੰਜਾਬੀ)",
+    flag: "🇮🇳",
     voices: [
-      { id: "pa-IN-Wavenet-A", label: "Simran (ਸਿਮਰਨ)", gender: "female", tier: "free" },
       { id: "pa-IN-Wavenet-B", label: "Harpreet (ਹਰਪ੍ਰੀਤ)", gender: "male", tier: "free" },
-    ],
-  },
-  {
-    code: "ur-IN",
-    label: "🇮🇳 Urdu (اردو)",
-    voices: [
-      { id: "ur-IN-Wavenet-A", label: "Zoya (زویا)", gender: "female", tier: "free" },
-      { id: "ur-IN-Wavenet-B", label: "Tariq (طارق)", gender: "male", tier: "free" },
-    ],
-  },
-  {
-    code: "or-IN",
-    label: "🇮🇳 Odia (ଓଡ଼ିଆ)",
-    voices: [
-      { id: "or-IN-Standard-A", label: "Rashmi (ରଶ୍ମି)", gender: "female", tier: "free" },
-      { id: "or-IN-Standard-B", label: "Bikram (ବିକ୍ରମ)", gender: "male", tier: "free" },
-    ],
-  },
-  {
-    code: "as-IN",
-    label: "🇮🇳 Assamese (অসমীয়া)",
-    voices: [
-      { id: "as-IN-Standard-A", label: "Parineeti (পৰিনীতি)", gender: "female", tier: "free" },
-      { id: "as-IN-Standard-B", label: "Bhupen (ভূপেন)", gender: "male", tier: "free" },
+      { id: "pa-IN-Wavenet-A", label: "Simran (ਸਿਮਰਨ)", gender: "female", tier: "free" },
     ],
   },
   {
     code: "en-US",
-    label: "🇺🇸 English (US)",
+    label: "English (US)",
+    flag: "🇺🇸",
     voices: [
-      { id: "en-US-Journey-F", label: "Jenny (US Studio Story)", gender: "female", tier: "free" },
-      { id: "en-US-Journey-D", label: "Guy (US Radio Host)", gender: "male", tier: "free" },
+      { id: "en-US-Neural2-J", label: "James (Dynamic & Smooth)", gender: "male", tier: "free" },
+      { id: "en-US-Neural2-F", label: "Emily (Natural & Warm)", gender: "female", tier: "free" },
     ],
   },
   {
     code: "en-GB",
-    label: "🇬🇧 English (UK)",
+    label: "English (UK)",
+    flag: "🇬🇧",
     voices: [
-      { id: "en-GB-Wavenet-A", label: "Sonia (British Classical)", gender: "female", tier: "free" },
-      { id: "en-GB-Wavenet-B", label: "Ryan (British Narrator)", gender: "male", tier: "free" },
-    ],
-  },
-  {
-    code: "es-ES",
-    label: "🇪🇸 Spanish (Español)",
-    voices: [
-      { id: "es-ES-Wavenet-B", label: "Lucia (Español Claro)", gender: "female", tier: "free" },
-      { id: "es-ES-Wavenet-C", label: "Alvaro (Español Dinámico)", gender: "male", tier: "free" },
-    ],
-  },
-  {
-    code: "fr-FR",
-    label: "🇫🇷 French (Français)",
-    voices: [
-      { id: "fr-FR-Wavenet-A", label: "Celine (Français Doux)", gender: "female", tier: "free" },
-      { id: "fr-FR-Wavenet-B", label: "Henri (Français Élégant)", gender: "male", tier: "free" },
-    ],
-  },
-  {
-    code: "de-DE",
-    label: "🇩🇪 German (Deutsch)",
-    voices: [
-      { id: "de-DE-Wavenet-A", label: "Marlene (Deutsch Klar)", gender: "female", tier: "free" },
-      { id: "de-DE-Wavenet-B", label: "Klaus (Deutsch Markant)", gender: "male", tier: "free" },
-    ],
-  },
-  {
-    code: "ar-XA",
-    label: "🇸🇦 Arabic (العربية)",
-    voices: [
-      { id: "ar-XA-Wavenet-A", label: "Fatima (فاطمة)", gender: "female", tier: "free" },
-      { id: "ar-XA-Wavenet-B", label: "Omar (عمر)", gender: "male", tier: "free" },
-    ],
-  },
-  {
-    code: "ja-JP",
-    label: "🇯🇵 Japanese (日本語)",
-    voices: [
-      { id: "ja-JP-Wavenet-A", label: "Nanami (七海)", gender: "female", tier: "free" },
-      { id: "ja-JP-Wavenet-C", label: "Keita (健太)", gender: "male", tier: "free" },
+      { id: "en-GB-Neural2-B", label: "Arthur (British Posh)", gender: "male", tier: "free" },
+      { id: "en-GB-Neural2-A", label: "Olivia (Royal English)", gender: "female", tier: "free" },
     ],
   },
 ];
-
-const femaleGradients = [
-  "from-pink-500 to-rose-400 shadow-rose-500/20",
-  "from-purple-500 to-indigo-400 shadow-purple-500/20",
-  "from-amber-400 to-orange-500 shadow-orange-500/20",
-  "from-teal-400 to-emerald-500 shadow-emerald-500/20",
-];
-
-const maleGradients = [
-  "from-blue-500 to-cyan-400 shadow-blue-500/20",
-  "from-indigo-500 to-violet-400 shadow-indigo-500/20",
-  "from-emerald-500 to-teal-400 shadow-teal-500/20",
-  "from-amber-500 to-orange-600 shadow-amber-500/20",
-];
-
-function getAvatarDetails(v?: Voice) {
-  if (!v) return { isFemale: true, gradient: femaleGradients[0], persona: "Natural Voice" };
-  const isFemale = v.gender.toLowerCase() === "female";
-  const gradient = isFemale ? femaleGradients[0] : maleGradients[0];
-  let persona = isFemale ? "Warm & Expressive" : "Clear & Confident";
-  if (v.label.toLowerCase().includes("studio") || v.tier === "paid") {
-    persona = "Ultra HD Studio";
-  } else if (v.label.toLowerCase().includes("story") || v.label.toLowerCase().includes("narrat")) {
-    persona = "Storyteller & Audiobook";
-  } else if (v.label.toLowerCase().includes("news") || v.label.toLowerCase().includes("corporat")) {
-    persona = "News & Professional";
-  }
-  return { isFemale, gradient, persona };
-}
 
 export default function VoiceControls({
   lang,
@@ -236,486 +155,365 @@ export default function VoiceControls({
   onVoiceChange,
   onSpeedChange,
 }: VoiceControlsProps) {
-  const [languages, setLanguages] = useState<Language[]>(ALL_LANGUAGES_CATALOG);
-  const [isPlayingSample, setIsPlayingSample] = useState(false);
+  const [styleMode, setStyleMode] = useState<string>("normal");
+  const [showAllVoices, setShowAllVoices] = useState<boolean>(false);
+  const [isPlayingSample, setIsPlayingSample] = useState<boolean>(false);
+  const [langDropdownOpen, setLangDropdownOpen] = useState<boolean>(false);
 
-  // Merge extra voices from API if available
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Close dropdown on outside click
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/voices", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled) return;
-        const apiLangs: Language[] = data.languages ?? [];
-        if (apiLangs.length > 0) {
-          // Merge API languages with the 20+ base languages catalog
-          const existingCodes = new Set(ALL_LANGUAGES_CATALOG.map((l) => l.code));
-          const merged = [...ALL_LANGUAGES_CATALOG];
-          for (const al of apiLangs) {
-            const idx = merged.findIndex((m) => m.code === al.code);
-            if (idx >= 0) {
-              const existingVoiceIds = new Set(merged[idx].voices.map((v) => v.id));
-              const newVoices = al.voices.filter((v) => !existingVoiceIds.has(v.id));
-              merged[idx] = {
-                ...merged[idx],
-                voices: [...merged[idx].voices, ...newVoices],
-              };
-            } else {
-              merged.push(al);
-            }
-          }
-          setLanguages(merged);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setLangDropdownOpen(false);
+      }
     };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  // ── R14: Saved Templates (tt_user_template) ──────────────────────────────
-  interface SavedTemplate {
-    id: number;
-    name: string;
-    voice_code: string;
-    language_code: string;
-    speed: number;
-  }
-  const [templates, setTemplates] = useState<SavedTemplate[]>([]);
-  const [showSavePresetModal, setShowSavePresetModal] = useState(false);
-  const [presetName, setPresetName] = useState("");
-  const [savingPreset, setSavingPreset] = useState(false);
-  const [presetMsg, setPresetMsg] = useState<{ text: string; isError: boolean } | null>(null);
+  // Current active language & voices
+  const currentLangObj =
+    ALL_LANGUAGES_CATALOG.find((l) => l.code === lang) || ALL_LANGUAGES_CATALOG[0];
+  const activeVoices = currentLangObj.voices;
 
-  const loadTemplates = async () => {
-    try {
-      const res = await fetch("/api/templates");
-      if (res.ok) {
-        const json = await res.json();
-        setTemplates(json.templates || []);
-      }
-    } catch (err) {
-      console.error("fetch_templates_failed", err);
+  const currentVoiceObj =
+    activeVoices.find((v) => v.id === voice) || activeVoices[0];
+  const selectedGender = currentVoiceObj?.gender || "male";
+
+  // Pick gender voice
+  const handleGenderSelect = (gender: "male" | "female") => {
+    const matchedVoice =
+      activeVoices.find((v) => v.gender === gender) ||
+      activeVoices[0];
+    if (matchedVoice) {
+      onVoiceChange(matchedVoice.id);
     }
   };
 
-  useEffect(() => {
-    loadTemplates();
-  }, []);
+  // Test voice sample playback
+  const handleTestVoiceSample = () => {
+    if (typeof window === "undefined") return;
 
-  const handleSavePreset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!presetName.trim()) return;
-    setSavingPreset(true);
-    setPresetMsg(null);
-    try {
-      const res = await fetch("/api/templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: presetName.trim(),
-          voice_code: voice,
-          language_code: lang,
-          speed: speed,
-        }),
-      });
-
-      if (res.status === 401) {
-        setPresetMsg({ text: "Please log in to save presets.", isError: true });
-        return;
-      }
-
-      if (res.ok) {
-        setPresetMsg({ text: "Preset saved successfully!", isError: false });
-        setPresetName("");
-        setTimeout(() => {
-          setShowSavePresetModal(false);
-          setPresetMsg(null);
-        }, 1200);
-        loadTemplates();
-      } else {
-        const errJson = await res.json();
-        setPresetMsg({ text: errJson.error || "Failed to save preset.", isError: true });
-      }
-    } catch {
-      setPresetMsg({ text: "Network error saving preset.", isError: true });
-    } finally {
-      setSavingPreset(false);
-    }
-  };
-
-  const handleSelectTemplate = (templateIdStr: string) => {
-    if (!templateIdStr) return;
-    const t = templates.find((item) => String(item.id) === templateIdStr);
-    if (!t) return;
-    onLangChange(t.language_code);
-    onVoiceChange(t.voice_code);
-    onSpeedChange(Number(t.speed) || 1.0);
-  };
-
-  const handleDeleteTemplate = async (id: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const res = await fetch(`/api/templates?id=${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setTemplates((prev) => prev.filter((item) => item.id !== id));
-      }
-    } catch (err) {
-      console.error("delete_template_failed", err);
-    }
-  };
-
-  // Ensure selected voice belongs to current language
-  useEffect(() => {
-    const current = languages.find((l) => l.code === lang);
-    if (current && !current.voices.some((v) => v.id === voice)) {
-      if (current.voices[0]) {
-        onVoiceChange(current.voices[0].id);
-      }
-    }
-  }, [lang, languages, voice, onVoiceChange]);
-
-  const currentLang = languages.find((l) => l.code === lang) ?? languages[0];
-  const voices = currentLang?.voices ?? [];
-  const selectedVoice = voices.find((v) => v.id === voice) ?? voices[0];
-  const avatar = getAvatarDetails(selectedVoice);
-
-  const handleLangChange = (newCode: string) => {
-    onLangChange(newCode);
-    const newLang = languages.find((l) => l.code === newCode);
-    if (newLang?.voices[0]) {
-      onVoiceChange(newLang.voices[0].id);
-    }
-  };
-
-  const playSample = () => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window) || !selectedVoice) return;
-    window.speechSynthesis.cancel();
-    if (isPlayingSample) {
-      setIsPlayingSample(false);
-      return;
-    }
-    const sampleText =
-      selectedVoice.gender.toLowerCase() === "female"
-        ? `Namaste, this is ${selectedVoice.label.split(" ")[0]}. Your text to speech avatar.`
-        : `Hello, this is ${selectedVoice.label.split(" ")[0]}. Ready to speak your script.`;
-    const utterance = new SpeechSynthesisUtterance(sampleText);
-    utterance.rate = speed;
-    utterance.onend = () => setIsPlayingSample(false);
-    utterance.onerror = () => setIsPlayingSample(false);
     setIsPlayingSample(true);
-    window.speechSynthesis.speak(utterance);
+
+    // Speak a sample preview using Web Speech API or synthesise short sentence
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      const sampleText =
+        lang.startsWith("hi")
+          ? selectedGender === "female"
+            ? "नमस्ते! यह मेरी आवाज़ का टेस्ट सैंपल है।"
+            : "नमस्ते! यह मेरी पुरुष आवाज़ का सैंपल है।"
+          : "Hello! This is a test preview of my neural voice.";
+
+      const utter = new SpeechSynthesisUtterance(sampleText);
+      utter.rate = speed;
+      utter.lang = lang;
+      utter.onend = () => setIsPlayingSample(false);
+      utter.onerror = () => setIsPlayingSample(false);
+      window.speechSynthesis.speak(utter);
+    } else {
+      setTimeout(() => setIsPlayingSample(false), 2000);
+    }
   };
 
-  const popularLangs = ["hi-IN", "en-IN", "ta-IN", "te-IN", "mr-IN", "bn-IN"];
+  const styleModes = [
+    { id: "normal", label: "Normal", icon: "📊" },
+    { id: "story", label: "Story", icon: "📖" },
+    { id: "news", label: "News", icon: "📰" },
+    { id: "youtube", label: "YouTube", icon: "▶️" },
+  ];
 
   return (
-    <div className="mt-6 space-y-5">
-      {/* ── Top Bar: Quick Switch Language Chips + Saved Presets ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1">
-            Popular:
-          </span>
-          {languages
-            .filter((l) => popularLangs.includes(l.code))
-            .map((l) => (
-              <button
-                key={l.code}
-                type="button"
-                onClick={() => handleLangChange(l.code)}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
-                  lang === l.code
-                    ? "bg-[#ff5500] text-white shadow-sm"
-                    : "border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-orange-300 dark:hover:border-orange-500"
-                }`}
-              >
-                <CountryFlag country={l.code.split("-")[1] || "IN"} size={14} className="size-3.5" />
-                <span>{l.label.replace(/^[^\s]+\s*/, "").split(" ")[0]}</span>
-              </button>
-            ))}
-        </div>
-
-        {/* Saved Presets Action */}
-        <div className="flex items-center gap-2">
-          {templates.length > 0 && (
-            <div className="relative">
-              <select
-                onChange={(e) => {
-                  handleSelectTemplate(e.target.value);
-                  e.target.value = "";
-                }}
-                defaultValue=""
-                className="appearance-none rounded-xl border border-orange-500/30 bg-orange-500/10 dark:bg-orange-950/30 px-3 py-1.5 pr-8 text-xs font-bold text-orange-700 dark:text-orange-300 hover:border-orange-500 transition cursor-pointer"
-              >
-                <option value="" disabled>
-                  ⭐ Presets ({templates.length})
-                </option>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                    {t.name} ({t.voice_code} · {t.speed}x)
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-orange-600 dark:text-orange-400">
-                <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setShowSavePresetModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-orange-500/40 hover:text-orange-600 transition shadow-xs"
-            title="Save current voice, language and speed as a template"
-          >
-            <span>🔖</span>
-            <span>Save Preset</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Save Preset Inline Modal */}
-      {showSavePresetModal && (
-        <div className="rounded-2xl border border-orange-500/30 bg-orange-50/80 dark:bg-orange-950/20 p-4 backdrop-blur-sm shadow-sm transition">
+    <aside className="w-full lg:w-[340px] xl:w-[370px] shrink-0 font-sans">
+      <div className="rounded-[28px] border border-slate-200/90 dark:border-zinc-800 bg-white dark:bg-[#0c0d12] p-5 sm:p-6 shadow-xl shadow-slate-200/40 dark:shadow-black/40 space-y-5">
+        {/* ── 1. Choose Voice Avatar ── */}
+        <div>
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>🔖</span>
-              <span>Save Voice Preset</span>
-            </h4>
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200">
+              <span className="flex size-5 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-950/60 text-[#ff5500] text-[11px] font-bold">
+                👤
+              </span>
+              <span>1. Choose Voice Avatar</span>
+            </div>
+
             <button
               type="button"
-              onClick={() => {
-                setShowSavePresetModal(false);
-                setPresetMsg(null);
-              }}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold"
+              onClick={() => setShowAllVoices(!showAllVoices)}
+              className="text-xs font-bold text-[#ff5500] hover:underline cursor-pointer"
             >
-              &times;
+              {showAllVoices ? "Hide List" : "See All"}
             </button>
           </div>
 
-          <form onSubmit={handleSavePreset} className="flex flex-col sm:flex-row gap-2">
-            <input
-              type="text"
-              placeholder="Preset Name (e.g. Hindi News Aditi)"
-              value={presetName}
-              onChange={(e) => setPresetName(e.target.value)}
-              maxLength={40}
-              className="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-orange-500"
-              autoFocus
-            />
-            <div className="flex items-center gap-2">
-              <button
-                type="submit"
-                disabled={savingPreset || !presetName.trim()}
-                className="btn-primary py-2 px-4 text-xs font-bold disabled:opacity-50"
-              >
-                {savingPreset ? "Saving..." : "Save"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowSavePresetModal(false);
-                  setPresetMsg(null);
-                }}
-                className="btn-ghost py-2 px-3 text-xs font-semibold"
-              >
-                Cancel
-              </button>
+          {/* Avatar Cards (Male & Female) */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Male Avatar */}
+            <button
+              type="button"
+              onClick={() => handleGenderSelect("male")}
+              className={`group relative flex flex-col items-center rounded-2xl p-3 transition-all cursor-pointer border-2 ${
+                selectedGender === "male"
+                  ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 shadow-md shadow-blue-500/10"
+                  : "border-slate-200/80 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/40 hover:border-blue-300"
+              }`}
+            >
+              {/* Checkmark Badge if Selected */}
+              {selectedGender === "male" && (
+                <div className="absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-blue-500 text-white text-[11px] font-black shadow-xs">
+                  ✓
+                </div>
+              )}
+
+              <div className="relative size-20 sm:size-24 overflow-hidden rounded-2xl shadow-sm mb-2">
+                <Image
+                  src="/images/male-avatar.jpg"
+                  alt="Male Voice Avatar"
+                  fill
+                  className="object-cover transition group-hover:scale-105"
+                  sizes="100px"
+                  priority
+                />
+              </div>
+
+              <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+                Male
+              </span>
+              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold mt-0.5">
+                {activeVoices.find((v) => v.gender === "male")?.label.split(" ")[0] || "Arjun"}
+              </span>
+            </button>
+
+            {/* Female Avatar */}
+            <button
+              type="button"
+              onClick={() => handleGenderSelect("female")}
+              className={`group relative flex flex-col items-center rounded-2xl p-3 transition-all cursor-pointer border-2 ${
+                selectedGender === "female"
+                  ? "border-pink-500 bg-pink-50/50 dark:bg-pink-950/30 shadow-md shadow-pink-500/10"
+                  : "border-slate-200/80 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/40 hover:border-pink-300"
+              }`}
+            >
+              {/* Checkmark Badge if Selected */}
+              {selectedGender === "female" && (
+                <div className="absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-pink-500 text-white text-[11px] font-black shadow-xs">
+                  ✓
+                </div>
+              )}
+
+              <div className="relative size-20 sm:size-24 overflow-hidden rounded-2xl shadow-sm mb-2">
+                <Image
+                  src="/images/female-avatar.jpg"
+                  alt="Female Voice Avatar"
+                  fill
+                  className="object-cover transition group-hover:scale-105"
+                  sizes="100px"
+                  priority
+                />
+              </div>
+
+              <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+                Female
+              </span>
+              <span className="text-[10px] text-pink-600 dark:text-pink-400 font-bold mt-0.5">
+                {activeVoices.find((v) => v.gender === "female")?.label.split(" ")[0] || "Aditi"}
+              </span>
+            </button>
+          </div>
+
+          {/* Extended Voice Picker (shown when "See All" is clicked) */}
+          {showAllVoices && (
+            <div className="mt-3 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/60 p-2.5 space-y-1.5 animate-fadeIn">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1">
+                All Available Voices ({currentLangObj.label})
+              </div>
+              <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+                {activeVoices.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => {
+                      onVoiceChange(v.id);
+                      setShowAllVoices(false);
+                    }}
+                    className={`w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-left transition cursor-pointer ${
+                      voice === v.id
+                        ? "bg-orange-500 text-white font-bold"
+                        : "bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 hover:bg-orange-50 dark:hover:bg-zinc-700"
+                    }`}
+                  >
+                    <span>{v.label}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                        voice === v.id
+                          ? "bg-white/20 text-white"
+                          : v.gender === "female"
+                          ? "bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300"
+                          : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                      }`}
+                    >
+                      {v.gender === "female" ? "♀ Pink" : "♂ Blue"}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </form>
-
-          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-            Will remember: <strong>{currentLang?.label}</strong> · Voice <strong>{selectedVoice?.label}</strong> · Speed <strong>{speed}x</strong>
-          </p>
-
-          {presetMsg && (
-            <p className={`mt-2 text-xs font-bold ${presetMsg.isError ? "text-rose-600" : "text-emerald-600"}`}>
-              {presetMsg.text}
-            </p>
           )}
         </div>
-      )}
 
-      {/* ── Main Controls Grid: Language, Voice, Speed ── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* 1. Language Dropdown (All 20+ Languages) */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <svg className="size-3.5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-              </svg>
-              All Languages
-            </label>
-            <span className="text-[11px] font-bold text-orange-600 dark:text-orange-400">
-              {languages.length} Languages
+        {/* ── 2. Select Language ── */}
+        <div ref={dropdownRef} className="relative">
+          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200 mb-2">
+            <span className="flex size-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 text-[11px] font-bold">
+              🌐
             </span>
+            <span>2. Select Language</span>
           </div>
 
-          <div className="relative">
-            <select
-              value={lang}
-              onChange={(e) => handleLangChange(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-3 pr-10 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white shadow-sm transition focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+          {/* Language Selector Box */}
+          <button
+            type="button"
+            onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+            className="w-full flex items-center justify-between rounded-2xl border border-slate-200 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/40 p-3 text-left transition hover:border-orange-400 cursor-pointer shadow-2xs"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">{currentLangObj.flag}</span>
+              <span className="text-sm font-bold text-slate-900 dark:text-white">
+                {currentLangObj.label}
+              </span>
+            </div>
+            <svg
+              className={`size-4 text-slate-400 transition-transform ${
+                langDropdownOpen ? "rotate-180 text-orange-500" : ""
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              {languages.map((l) => (
-                <option
-                  key={l.code}
-                  value={l.code}
-                  className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white py-1.5"
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* Dropdown Menu */}
+          {langDropdownOpen && (
+            <div className="absolute top-full left-0 right-0 mt-2 z-50 max-h-60 overflow-y-auto rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#12131a] p-2 shadow-2xl space-y-1 animate-fadeIn">
+              {ALL_LANGUAGES_CATALOG.map((item) => (
+                <button
+                  key={item.code}
+                  type="button"
+                  onClick={() => {
+                    onLangChange(item.code);
+                    const defaultVoice = item.voices[0]?.id;
+                    if (defaultVoice) onVoiceChange(defaultVoice);
+                    setLangDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs transition cursor-pointer ${
+                    lang === item.code
+                      ? "bg-orange-500 text-white font-bold"
+                      : "text-slate-800 dark:text-zinc-200 hover:bg-orange-50 dark:hover:bg-zinc-800/80"
+                  }`}
                 >
-                  {l.label}
-                </option>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{item.flag}</span>
+                    <span>{item.label}</span>
+                  </div>
+                  <span className="text-[10px] opacity-80">
+                    {item.voices.length} Voices
+                  </span>
+                </button>
               ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-              <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
             </div>
+          )}
+        </div>
+
+        {/* ── 3. Speaking Style / Mode ── */}
+        <div>
+          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200 mb-2.5">
+            <span className="flex size-5 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-950/60 text-[#ff5500] text-[11px] font-bold">
+              📊
+            </span>
+            <span>3. Speaking Style / Mode</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {styleModes.map((m) => {
+              const active = styleMode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setStyleMode(m.id)}
+                  className={`flex items-center gap-2 rounded-xl border p-2.5 text-xs font-bold transition cursor-pointer ${
+                    active
+                      ? "border-orange-500 bg-orange-50/70 dark:bg-orange-950/30 text-[#ff5500] dark:text-orange-400 shadow-xs"
+                      : "border-slate-200/80 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/30 text-slate-700 dark:text-zinc-300 hover:border-orange-300"
+                  }`}
+                >
+                  <span>{m.icon}</span>
+                  <span>{m.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* 2. Voice Dropdown */}
+        {/* ── 4. Speech Speed ── */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <svg className="size-3.5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" />
-              </svg>
-              Select Voice
-            </label>
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-              {voices.length} voices
-            </span>
-          </div>
-
-          <div className="relative">
-            <select
-              value={voice}
-              onChange={(e) => onVoiceChange(e.target.value)}
-              disabled={voices.length === 0}
-              className="w-full appearance-none rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-3 pr-10 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white shadow-sm transition focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-            >
-              {voices.length === 0 && <option value="">No voices available</option>}
-              {voices.map((v) => {
-                const isPremium = v.tier === "paid";
-                const isFemale = v.gender.toLowerCase() === "female";
-                return (
-                  <option
-                    key={v.id}
-                    value={v.id}
-                    disabled={isPremium}
-                    className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white py-1.5"
-                  >
-                    {isFemale ? "👩" : "👨"} {v.label} {isPremium ? "🔒 (Pro)" : ""}
-                  </option>
-                );
-              })}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-              <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200">
+              <span className="flex size-5 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-950/60 text-[#ff5500] text-[11px] font-bold">
+                ⏱️
+              </span>
+              <span>4. Speech Speed</span>
             </div>
-          </div>
-        </div>
 
-        {/* 3. Speed Control */}
-        <div className="sm:col-span-2 lg:col-span-1">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <svg className="size-3.5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              Speech Speed
-            </label>
-            <span className="rounded-md bg-orange-100 dark:bg-orange-950/80 px-2 py-0.5 text-xs font-bold text-orange-700 dark:text-orange-300">
+            <span className="rounded-md bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-800/60 px-2 py-0.5 text-xs font-extrabold text-[#ff5500] dark:text-orange-400">
               {speed.toFixed(1)}x
             </span>
           </div>
 
-          <div className="flex h-[46px] items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 shadow-sm">
-            <input
-              type="range"
-              min="0.7"
-              max="1.3"
-              step="0.1"
-              value={speed}
-              onChange={(e) => onSpeedChange(Number(e.target.value))}
-              className="w-full accent-orange-500 cursor-pointer"
-            />
+          {/* Range Slider */}
+          <input
+            type="range"
+            min={0.5}
+            max={2.0}
+            step={0.1}
+            value={speed}
+            onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
+            className="w-full accent-[#ff5500] h-2 bg-slate-200 dark:bg-zinc-800 rounded-lg cursor-pointer"
+          />
+
+          <div className="flex justify-between text-[10px] text-slate-400 dark:text-zinc-500 font-semibold mt-1">
+            <span>0.5x Slow</span>
+            <span>1.0x Normal</span>
+            <span>2.0x Fast</span>
           </div>
         </div>
-      </div>
 
-      {/* ── Active Selected Voice Avatar Preview Card ── */}
-      {selectedVoice && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-white dark:from-slate-900/90 dark:to-slate-900/50 p-4 shadow-sm transition">
-          <div className="flex items-center gap-3.5 min-w-0">
-            {/* Avatar badge */}
-            <div
-              className={`flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr ${avatar.gradient} text-white shadow-md`}
-            >
-              {avatar.isFemale ? (
-                <svg className="size-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C8.686 2 6 4.686 6 8c0 2.21 1.2 4.14 2.97 5.17A6.99 6.99 0 005 20a1 1 0 102 0 5 5 0 0110 0 1 1 0 102 0 6.99 6.99 0 00-3.97-6.83C16.8 12.14 18 10.21 18 8c0-3.314-2.686-6-6-6zm0 2c2.21 0 4 1.79 4 4 0 1.95-1.4 3.54-3.26 3.93a1 1 0 00-.74.98v.09h0a1 1 0 00-.74-.98C9.4 11.54 8 9.95 8 8c0-2.21 1.79-4 4-4z" />
-                </svg>
-              ) : (
-                <svg className="size-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C8.686 2 6 4.686 6 8c0 2.22 1.2 4.16 2.98 5.19A7 7 0 005 20a1 1 0 102 0 5 5 0 0110 0 1 1 0 102 0 7 7 0 00-3.98-6.81C16.8 12.16 18 10.22 18 8c0-3.314-2.686-6-6-6zm0 2c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4 1.79-4 4-4z" />
-                </svg>
-              )}
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                  {selectedVoice.label}
-                </span>
-                <span className="rounded-full bg-orange-100 dark:bg-orange-950/80 px-2 py-0.5 text-[10px] font-bold text-orange-700 dark:text-orange-300">
-                  {selectedVoice.gender}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {avatar.persona} · {currentLang?.label}
-              </p>
-            </div>
-          </div>
-
-          {/* Test Voice Sample Audio Button */}
+        {/* ── 5. Test Voice Sample Button ── */}
+        <div>
           <button
             type="button"
-            onClick={playSample}
-            className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold shadow-sm transition ${
-              isPlayingSample
-                ? "bg-orange-500 text-white animate-pulse"
-                : "border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-orange-50 dark:hover:bg-slate-700 hover:text-orange-600"
-            }`}
+            onClick={handleTestVoiceSample}
+            disabled={isPlayingSample}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 py-3 text-xs sm:text-sm font-extrabold text-slate-800 dark:text-zinc-200 transition cursor-pointer shadow-xs disabled:opacity-50"
           >
             {isPlayingSample ? (
               <>
-                <svg className="size-3.5 animate-spin" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="6" y="5" width="4" height="14" rx="1" />
-                  <rect x="14" y="5" width="4" height="14" rx="1" />
-                </svg>
-                <span>Playing Voice Sample…</span>
+                <span className="size-2 rounded-full bg-orange-500 animate-ping" />
+                <span>Playing Voice Sample...</span>
               </>
             ) : (
               <>
-                <svg className="size-3.5 text-orange-500" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86a1 1 0 00-1.5.86z" />
-                </svg>
+                <span className="text-xs">▶</span>
                 <span>Test Voice Sample</span>
               </>
             )}
           </button>
         </div>
-      )}
-    </div>
+      </div>
+    </aside>
   );
 }

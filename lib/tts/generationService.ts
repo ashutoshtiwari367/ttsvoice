@@ -15,6 +15,8 @@ import {
 } from '@/lib/usage';
 import { spendUserCredits, refundUserCredits } from '@/lib/credits';
 import { sanitizeTtsText } from '@/lib/tts/textSanitizer';
+import { validateAllowanceForGeneration } from '@/lib/allowance';
+import { triggerBackgroundCleanup } from '@/lib/history/cleanup';
 
 // Hard cap on how much text we STORE per request (protects the DB from junk floods).
 // char_count still records the full submitted length.
@@ -254,6 +256,20 @@ async function validateRequest(input: GenerateInput, ipHash: string, inputId: In
   );
   if (chars > ceiling) throw new TtsError('text_too_long');
 
+  // Strict character allowance check (500 chars guest, fresh 500 chars free, plan limit paid)
+  const allowanceOutcome = await validateAllowanceForGeneration({
+    charCount: chars,
+    customerId,
+    subjectId: input.subjectId,
+  });
+
+  if (!allowanceOutcome.valid) {
+    if (allowanceOutcome.code === 'daily_limit_reached') {
+      throw new TtsError('daily_limit_reached');
+    }
+    throw new TtsError('text_too_long');
+  }
+
   return {
     ...input,
     customerId,
@@ -381,6 +397,19 @@ async function recordGeneration(ctx: Ctx, objectKey: string, cacheHit: boolean, 
   const fxRate = await getActiveRate(ctx.voice.cost_currency, config.baseCurrency);
   const costSrc = cacheHit ? 0 : (ctx.chars / 1_000_000) * ctx.voice.cost_per_millchar;
 
+  // Calculate expiration timestamp
+  // Guest: 30 minutes
+  // Logged-in Free: 24 hours
+  // Paid: 30 days
+  let expiresAt: string;
+  if (!ctx.customerId) {
+    expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  } else if (ctx.userTier === 'free') {
+    expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  } else {
+    expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  }
+
   await logGeneration({
     brandId: ctx.brandId, customerId: ctx.customerId, anonSubjectId: ctx.subjectId,
     userCategory: ctx.userCategory, inputId: ctx.inputId, contentHash: ctx.hash, charCount: ctx.chars,
@@ -390,7 +419,7 @@ async function recordGeneration(ctx: Ctx, objectKey: string, cacheHit: boolean, 
     estimatedCostInr: Number((costSrc * fxRate).toFixed(6)),
     speakingRate: ctx.speed, provider: ctx.provider, isCacheHit: cacheHit,
     audioObjectKey: objectKey, countryCode: ctx.country, ipHash: ctx.ipHash,
-    tier: ctx.userTier, isFlagged: false, status,
+    tier: ctx.userTier, isFlagged: false, status, expiresAt,
     continentCode: ctx.meta?.continentCode ?? null,
     regionCode: ctx.meta?.regionCode ?? null,
     city: ctx.meta?.city ?? null,
@@ -411,6 +440,7 @@ async function recordGeneration(ctx: Ctx, objectKey: string, cacheHit: boolean, 
 async function finalize(ctx: Ctx, objectKey: string, cacheHit: boolean): Promise<GenerateResult> {
   await recordGeneration(ctx, objectKey, cacheHit, 'success');
   await updateInputStatus(ctx.inputId, 'generated', null, null);
+  triggerBackgroundCleanup();
   const storage = await getStorage();
   const url = await storage.url(objectKey, config.signedUrlTtlSeconds);
   return { url, cached: cacheHit, chars: ctx.chars };

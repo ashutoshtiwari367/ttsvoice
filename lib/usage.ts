@@ -244,6 +244,7 @@ export interface GenerationLog {
   tier: string;
   isFlagged: boolean;
   status: 'success' | 'failed' | 'blocked';
+  expiresAt?: string | null;
   // request metadata (migration 0004)
   continentCode?: string | null;
   regionCode?: string | null;
@@ -262,7 +263,7 @@ export interface GenerationLog {
 }
 
 export async function logGeneration(r: GenerationLog) {
-  const { error } = await admin.from('tts_generations').insert({
+  const payload: Record<string, any> = {
     brand_id: r.brandId,
     customer_id: r.customerId,
     anon_subject_id: r.anonSubjectId,
@@ -301,7 +302,21 @@ export async function logGeneration(r: GenerationLog) {
     browser_lang: r.browserLang ?? null,
     referrer_host: r.referrerHost ?? null,
     is_new_subject: r.isNewSubject ?? null,
-  });
-  // surface insert failures in logs (previously silent)
-  if (error) console.error('log_generation_failed', error);
+  };
+
+  if (r.expiresAt) {
+    payload.expires_at = r.expiresAt;
+  }
+
+  const { error } = await admin.from('tts_generations').insert(payload);
+  if (error) {
+    // If column expires_at does not yet exist in Supabase table, retry without it
+    if (payload.expires_at) {
+      delete payload.expires_at;
+      const { error: retryError } = await admin.from('tts_generations').insert(payload);
+      if (retryError) console.error('log_generation_retry_failed', retryError);
+    } else {
+      console.error('log_generation_failed', error);
+    }
+  }
 }

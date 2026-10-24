@@ -126,7 +126,7 @@ export default function Header() {
                 ? "border-orange-500/50 bg-orange-500/15 text-[#ff5500] dark:text-orange-400"
                 : "border-black/[0.08] dark:border-white/[0.08] bg-black/[0.03] dark:bg-white/[0.05] text-slate-800 dark:text-zinc-200 hover:border-orange-500/40 hover:text-[#ff5500] dark:hover:text-orange-400"
             }`}
-            title="Generation History (Kept 7 days)"
+            title="Generation History (Kept 24h)"
           >
             <span>🎙️</span>
             <span>History</span>
@@ -160,19 +160,36 @@ export default function Header() {
       );
     }
 
+    const isHistoryActive = pathname === "/history";
+
     return (
-      <div className={`flex items-center gap-3.5 ${mobile ? "w-full justify-between" : ""}`}>
+      <div className={`flex items-center gap-2 sm:gap-2.5 ${mobile ? "w-full justify-between" : ""}`}>
+        <Link
+          href="/history"
+          onClick={() => setMenuOpen(false)}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition shadow-xs ${
+            isHistoryActive
+              ? "border-orange-500/50 bg-orange-500/15 text-[#ff5500] dark:text-orange-400"
+              : "border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.04] text-slate-800 dark:text-zinc-200 hover:border-orange-500/40 hover:text-[#ff5500] dark:hover:text-orange-400"
+          }`}
+          title="Generation History"
+        >
+          <svg className="size-3.5 text-slate-500 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>History</span>
+        </Link>
         <Link
           href="/login"
           onClick={() => setMenuOpen(false)}
-          className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white transition"
+          className="rounded-full border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.04] px-3.5 py-1.5 text-xs font-bold text-slate-800 dark:text-zinc-200 hover:bg-black/[0.05] dark:hover:bg-white/[0.08] transition"
         >
           Log In
         </Link>
         <Link
           href="/signup"
           onClick={() => setMenuOpen(false)}
-          className="btn-primary px-4 py-2 text-xs sm:text-sm shadow-md"
+          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-orange-500 via-[#ff5500] to-orange-600 px-4 py-1.5 text-xs font-extrabold text-white shadow-md shadow-orange-500/25 hover:scale-105 active:scale-95 transition"
         >
           <span>Sign Up Free</span>
           <span aria-hidden="true">&rarr;</span>

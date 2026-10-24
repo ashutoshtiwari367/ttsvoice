@@ -122,7 +122,7 @@ export const siteConfig = {
   // ── 7. NAVIGATION LINKS ─────────────────────────────────────────────────────
   navLinks: [
     { href: "/", label: "Home" },
-    { href: "/text-to-speech", label: "Text to Speech" },
+    { href: "/about", label: "About" },
     { href: "/blog", label: "Blog" },
     { href: "/tools", label: "More Tools" },
     { href: "/pricing", label: "Pricing" },

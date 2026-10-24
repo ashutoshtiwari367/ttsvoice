@@ -4,32 +4,41 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { siteConfig as TTS_DEFAULTS } from "@/config/site";
+import AdSpacePromo from "./AdSpacePromo";
 import ScriptEditor from "./ScriptEditor";
 import VoiceControls from "./VoiceControls";
 import GenerateButton from "./GenerateButton";
 import AudioResult from "./AudioResult";
-import AdSlot from "../ads/AdSlot";
+import RecentConversions from "./RecentConversions";
 
 type Status = "idle" | "generating" | "ready" | "error";
 
 const DEFAULT_BUSY_NOTICE =
   "Our servers are experiencing high demand right now. Please try again in 2 to 5 minutes.";
 
-interface UserCreditsState {
+interface UserAllowanceState {
   isAuthenticated: boolean;
+  userType: "guest" | "free" | "premium";
   tier: "anon" | "free" | "paid";
+  totalAllowance: number;
+  usedChars: number;
+  remainingChars: number;
+  singleReqCap: number;
+  historyRetentionMinutes: number;
+  historyRetentionLabel: string;
+  historyNotice: string;
+  isPremium: boolean;
   balance: number;
   reqCap: number;
-  dayCap: number;
-  weekCap: number;
-  allowPremiumVoices: boolean;
+  activePlanName?: string;
+  customerNo?: number | null;
 }
 
 export default function TTSWorkspace() {
   const [text, setText] = useState("");
   const [speed, setSpeed] = useState<number>(TTS_DEFAULTS.tts.speed);
   const [lang, setLang] = useState<string>("hi-IN");
-  const [voice, setVoice] = useState<string>("hi-IN-Wavenet-A");
+  const [voice, setVoice] = useState<string>("hi-IN-Wavenet-B");
   const [status, setStatus] = useState<Status>("idle");
   const [playing, setPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -37,16 +46,17 @@ export default function TTSWorkspace() {
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [noticeAudio, setNoticeAudio] = useState<string | null>(null);
-  const [userCredits, setUserCredits] = useState<UserCreditsState | null>(null);
+  const [userAllowance, setUserAllowance] = useState<UserAllowanceState | null>(null);
+  const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
 
   const resultRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchCredits = async () => {
+  const fetchAllowance = async () => {
     try {
       const res = await fetch("/api/user/credits");
       if (res.ok) {
         const data = await res.json();
-        setUserCredits(data);
+        setUserAllowance(data);
       }
     } catch {
       // ignore
@@ -54,18 +64,18 @@ export default function TTSWorkspace() {
   };
 
   useEffect(() => {
-    fetchCredits();
-    window.addEventListener("focus", fetchCredits);
-    window.addEventListener("auth-changed", fetchCredits);
-    window.addEventListener("credits-updated", fetchCredits);
+    fetchAllowance();
+    window.addEventListener("focus", fetchAllowance);
+    window.addEventListener("auth-changed", fetchAllowance);
+    window.addEventListener("credits-updated", fetchAllowance);
     return () => {
-      window.removeEventListener("focus", fetchCredits);
-      window.removeEventListener("auth-changed", fetchCredits);
-      window.removeEventListener("credits-updated", fetchCredits);
+      window.removeEventListener("focus", fetchAllowance);
+      window.removeEventListener("auth-changed", fetchAllowance);
+      window.removeEventListener("credits-updated", fetchAllowance);
     };
   }, []);
 
-  // Pick up ?lang=... from URL if directed from home page language pills
+  // Pick up ?lang=... from URL if directed from other pages
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -76,49 +86,62 @@ export default function TTSWorkspace() {
     }
   }, []);
 
+  // Character calculations
+  const isPremium = userAllowance?.isPremium === true;
+  const singleCap = isPremium
+    ? (userAllowance?.reqCap ?? 10000)
+    : 500;
+  const remainingAllowance = userAllowance?.remainingChars ?? 500;
+  const allowedLimit = Math.max(0, Math.min(singleCap, remainingAllowance));
+
+  const isOverLimit = text.length > allowedLimit;
+  const extraChars = isOverLimit ? text.length - allowedLimit : 0;
+  const isAllowanceExhausted = remainingAllowance <= 0;
+
   const generateSpeech = async () => {
-    if (!text.trim() || status === "generating") {
+    if (!text.trim() || status === "generating" || isOverLimit || isAllowanceExhausted) {
       return;
     }
 
     setStatus("generating");
-    setPlaying(false);
     setError(null);
     setErrorCode(null);
     setNotice(null);
     setNoticeAudio(null);
-    setAudioUrl(null);
 
     try {
-      const res = await fetch("/api/generate", {
+      const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, lang, voice, speed }),
+        body: JSON.stringify({
+          text,
+          lang,
+          voice,
+          speed,
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        const code = data?.error;
-        setErrorCode(code);
-        setError(messageFor(code));
+        const serverError = data.error || "Failed to generate speech";
+        setError(serverError);
+        setErrorCode(data.code || null);
         setStatus("error");
+        fetchAllowance();
         return;
       }
 
-      if (data.busy) {
-        setNotice(typeof data.message === "string" && data.message ? data.message : DEFAULT_BUSY_NOTICE);
-        setNoticeAudio(typeof data.url === "string" && data.url ? data.url : null);
-        setStatus("idle");
-        return;
-      }
-
-      setAudioUrl(data.url);
+      setAudioUrl(data.audioUrl);
       setStatus("ready");
 
-      // Refresh credits balance after spend
-      fetchCredits();
-      window.dispatchEvent(new Event("credits-updated"));
+      if (data.notice) {
+        setNotice(data.notice);
+        setNoticeAudio(data.noticeAudioUrl || null);
+      }
+
+      fetchAllowance();
+      setHistoryRefreshTrigger((prev) => prev + 1);
 
       setTimeout(() => {
         resultRef.current?.scrollIntoView({
@@ -144,119 +167,87 @@ export default function TTSWorkspace() {
   };
 
   return (
-    <section id="tool" className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 pb-16">
-      <div className="overflow-hidden rounded-[32px] border border-black/[0.08] dark:border-white/[0.08] bg-white/80 dark:bg-white/[0.03] shadow-2xl dark:shadow-[0_25px_80px_rgba(0,0,0,0.6)] backdrop-blur-2xl transition-colors">
-        {/* Top Header Bar */}
-        <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] px-6 py-4.5 sm:px-8 bg-black/[0.02] dark:bg-white/[0.02]">
-          <div className="flex items-center gap-2.5">
-            <span className="dot-live" />
-            <span className="text-sm font-bold text-slate-900 dark:text-white">
-              AI Voice Studio
+    <section id="tool" className="mx-auto max-w-[1440px] px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-16">
+      {/* Pro Subscriber Quick Status Bar (if logged in with active subscription) */}
+      {isPremium && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.08] dark:bg-emerald-950/30 px-5 py-2.5 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="flex size-6 items-center justify-center rounded-lg bg-emerald-500 text-white text-xs font-black">
+              ⚡
             </span>
-            <span className="hidden sm:inline text-xs text-slate-400 dark:text-zinc-500 font-medium">
-              • Real-Time Neural Speech
+            <span className="font-bold text-slate-800 dark:text-zinc-200">
+              Pro Studio Active: Customer #{userAllowance?.customerNo ?? "10000000"} ({userAllowance?.activePlanName ?? "Standard Pack"})
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            {userCredits?.tier === "paid" && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-500 dark:text-emerald-400 border border-emerald-500/25">
-                🪙 {userCredits.balance.toLocaleString()} Credits
-              </span>
-            )}
-            <span className="rounded-full bg-orange-500/10 px-3 py-1 text-xs font-bold text-[#ff5500] dark:text-orange-400 border border-orange-500/20">
-              v2.0 Neural Engine
+          <div className="flex items-center gap-3 font-semibold">
+            <Link
+              href="/account"
+              className="rounded-full bg-emerald-500/20 border border-emerald-500/30 px-3.5 py-1 font-extrabold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/30 transition"
+            >
+              Manage in Account →
+            </Link>
+            <span className="text-slate-500 dark:text-zinc-400">
+              Priority GPU Acceleration
             </span>
           </div>
         </div>
+      )}
 
-        {/* Editor and controls */}
-        <div className="p-5 sm:p-8">
+      {/* ── 3-COLUMN STUDIO LAYOUT (Matching user uploaded image) ── */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-start gap-5 lg:gap-6">
+        {/* 1. LEFT COLUMN: AD SPACE & PROMO CARD */}
+        <AdSpacePromo />
+
+        {/* 2. CENTER COLUMN: AI VOICE STUDIO SCRIPT EDITOR & CONVERT BUTTON */}
+        <div className="flex-1 w-full min-w-0 space-y-5">
           <ScriptEditor
             text={text}
             onChange={setText}
             onClear={clearText}
-            maxCharacters={userCredits?.reqCap ?? 500}
-            tier={userCredits?.tier ?? "anon"}
-            balance={userCredits?.balance ?? 0}
+            userType={userAllowance?.userType ?? "guest"}
+            totalAllowance={userAllowance?.totalAllowance ?? 500}
+            usedChars={userAllowance?.usedChars ?? 0}
+            remainingChars={userAllowance?.remainingChars ?? 500}
+            maxCharacters={singleCap}
+            tier={userAllowance?.tier ?? "anon"}
+            balance={userAllowance?.balance ?? 0}
           />
 
-          {/* Pricing promo card */}
-          <div className="relative mt-6 overflow-hidden rounded-2xl bg-gradient-to-r from-[#ff6a1f] via-[#ff5500] to-amber-500 p-5 text-white shadow-xl shadow-orange-500/20 sm:p-6">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -right-10 -top-12 size-48 rounded-full bg-white/15 blur-xl"
-            />
-
-            <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-100">
-                  Prepaid Voice Top-ups
-                </span>
-                <h2 className="mt-1 text-lg font-bold sm:text-xl">
-                  Need more characters for your audio projects?
-                </h2>
-                <p className="mt-0.5 text-xs sm:text-sm text-orange-50/90">
-                  High-definition Indian &amp; Global AI voices starting from just ₹29 via Razorpay
-                </p>
-              </div>
-
-              <div className="flex items-center gap-4 sm:flex-col sm:items-end">
-                <p className="flex items-baseline gap-1">
-                  <span className="text-xs font-semibold text-orange-100">From</span>
-                  <span className="text-4xl sm:text-5xl font-black leading-none tracking-tight">
-                    ₹29
-                  </span>
-                </p>
-
-                <Link
-                  href="/pricing"
-                  className="btn-ghost px-5 py-2.5 text-xs sm:text-sm font-bold bg-white text-slate-900 shadow-md hover:bg-orange-50 transition"
-                >
-                  Explore Plans <span className="ml-1" aria-hidden="true">→</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Voice & Avatar Controls */}
-          <VoiceControls
-            lang={lang}
-            voice={voice}
-            speed={speed}
-            onLangChange={setLang}
-            onVoiceChange={setVoice}
-            onSpeedChange={setSpeed}
-          />
-
-          {/* Generate Action Button */}
+          {/* Prominent Wide Pill Action Button */}
           <GenerateButton
             generating={status === "generating"}
-            disabled={!text.trim() || status === "generating"}
+            disabled={
+              !text.trim() ||
+              status === "generating" ||
+              isOverLimit ||
+              isAllowanceExhausted
+            }
+            isOverLimit={isOverLimit}
+            extraChars={extraChars}
+            remainingAllowance={remainingAllowance}
             onClick={generateSpeech}
           />
 
-          {/* Error Message */}
+          {/* Error Message Alert */}
           {error && (
             <div
               role="alert"
-              className="mt-4 flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50/70 dark:bg-red-950/30 px-4 py-3 text-sm font-medium text-red-700 dark:text-red-300"
+              className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-5 py-3.5 text-xs font-semibold text-red-700 dark:text-red-300 shadow-sm animate-fadeIn"
             >
               <div className="flex items-center gap-2.5">
-                <svg className="size-5 shrink-0 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
+                <span className="text-base">⚠️</span>
                 <span>{error}</span>
               </div>
               {(errorCode === "insufficient_credits" ||
                 errorCode === "daily_limit_reached" ||
-                errorCode === "weekly_limit_reached" ||
+                errorCode === "text_too_long" ||
                 errorCode === "voice_not_allowed") && (
                 <Link
-                  href="/pricing"
-                  className="rounded-lg bg-red-600 hover:bg-red-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition"
+                  href={userAllowance?.isAuthenticated ? "/pricing" : "/login"}
+                  className="rounded-xl bg-red-600 hover:bg-red-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition"
                 >
-                  View Packs & Pricing →
+                  {userAllowance?.isAuthenticated ? "View Packs & Pricing →" : "Sign In Free →"}
                 </Link>
               )}
             </div>
@@ -266,72 +257,59 @@ export default function TTSWorkspace() {
           {notice && (
             <div
               role="status"
-              className="mt-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm text-amber-800 dark:text-amber-300"
+              className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/40 p-4 text-xs font-semibold text-amber-800 dark:text-amber-300"
             >
-              <p className="font-medium">{notice}</p>
+              <p>{notice}</p>
               {noticeAudio && (
-                <audio className="mt-3 w-full" src={noticeAudio} controls preload="none" />
+                <audio
+                  className="mt-3 w-full"
+                  src={noticeAudio}
+                  controls
+                  preload="none"
+                />
               )}
               <button
                 type="button"
                 onClick={generateSpeech}
-                className="mt-3 rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-amber-700"
+                className="mt-3 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-amber-700 cursor-pointer"
               >
                 Try Again
               </button>
             </div>
           )}
-        </div>
 
-        {/* Result Container */}
-        <div
-          ref={resultRef}
-          className="border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-950/60 p-6 sm:p-8 transition-colors"
-        >
-          <AudioResult
-            status={status}
-            playing={playing}
-            audioUrl={audioUrl}
-            onPlay={() => setPlaying(!playing)}
+          {/* Audio Result Container (Shown when audio is generated) */}
+          {(status === "ready" || status === "generating") && (
+            <div
+              ref={resultRef}
+              className="rounded-[28px] border border-slate-200/90 dark:border-zinc-800 bg-white dark:bg-[#0c0d12] p-6 shadow-xl shadow-slate-200/40 dark:shadow-black/40 animate-fadeIn"
+            >
+              <AudioResult
+                status={status}
+                playing={playing}
+                audioUrl={audioUrl}
+                onPlay={() => setPlaying(!playing)}
+              />
+            </div>
+          )}
+
+          {/* Recent Conversions History */}
+          <RecentConversions
+            userType={userAllowance?.userType ?? "guest"}
+            refreshTrigger={historyRefreshTrigger}
           />
         </div>
-      </div>
 
-      <div className="mt-8">
-        <AdSlot format="leaderboard" label="Advertisement" />
+        {/* 3. RIGHT COLUMN: VOICE CONTROLS & AVATAR SELECTION */}
+        <VoiceControls
+          lang={lang}
+          voice={voice}
+          speed={speed}
+          onLangChange={setLang}
+          onVoiceChange={setVoice}
+          onSpeedChange={setSpeed}
+        />
       </div>
     </section>
   );
-}
-
-function messageFor(code?: string) {
-  switch (code) {
-    case "daily_limit_reached":
-      return "You have reached today's free character limit. Sign in or top up to continue.";
-    case "weekly_limit_reached":
-      return "You have reached this week's free limit. Please try again in a few days.";
-    case "monthly_limit_reached":
-      return "You have reached this month's limit. Please top up to continue.";
-    case "generation_limit_reached":
-      return "You have reached today's generation limit. Please try again tomorrow.";
-    case "region_unavailable":
-      return "This service is currently not available in your region.";
-    case "insufficient_credits":
-      return "Not enough credits. Please recharge your account to continue.";
-    case "voice_not_allowed":
-      return "This voice requires a Pro plan. Upgrade to unlock.";
-    case "text_too_long":
-      return "Your script is too long. Please shorten your text or upgrade.";
-    case "invalid_voice":
-    case "unsupported_language":
-      return "Please select a valid language and voice.";
-    case "invalid_request":
-      return "Please enter some text to generate.";
-    case "rate_limited":
-      return "Too many requests. Please wait a few seconds and try again.";
-    case "blocked":
-      return "Access is temporarily restricted. Please contact support.";
-    default:
-      return "Unable to generate speech. Please try again.";
-  }
 }

@@ -38,18 +38,24 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // Refresh the session (important — do NOT remove this call).
+  const { pathname } = request.nextUrl;
+  const isProtected = pathname.startsWith('/account');
+  const hasAuthCookie = request.cookies.getAll().some(
+    (c) => c.name.includes('-auth-token') || c.name.startsWith('sb-')
+  );
+
+  // Skip remote auth roundtrip for API routes (they authenticate themselves)
+  // and for guest visitors on public routes with no auth cookies
+  if (!isProtected && !hasAuthCookie) {
+    return supabaseResponse;
+  }
+
+  // Refresh the session only when needed (protected route or user with auth cookies)
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   // ── Protected routes ────────────────────────────────────────────────────────
-  const { pathname } = request.nextUrl;
-  const isProtected =
-    pathname.startsWith('/text-to-speech') ||
-    pathname.startsWith('/account') ||
-    pathname.startsWith('/history');
-
   if (isProtected && !user) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';

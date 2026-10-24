@@ -12,4 +12,11 @@ export const supabaseStorage: AudioStorage = {
     if (error || !data) throw error ?? new Error('supabase: signed url failed');
     return data.signedUrl;
   },
+  async delete(key) {
+    try {
+      await admin.storage.from(config.audioBucket).remove([key]);
+    } catch (err) {
+      console.warn('supabase_storage_delete_failed', key, err);
+    }
+  },
 };
