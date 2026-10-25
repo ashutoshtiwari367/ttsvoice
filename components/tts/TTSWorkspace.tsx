@@ -110,7 +110,7 @@ export default function TTSWorkspace() {
     setNoticeAudio(null);
 
     try {
-      const res = await fetch("/api/tts", {
+      const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -124,19 +124,20 @@ export default function TTSWorkspace() {
       const data = await res.json();
 
       if (!res.ok) {
-        const serverError = data.error || "Failed to generate speech";
-        setError(serverError);
-        setErrorCode(data.code || null);
+        const errCode = data.error || data.code;
+        setError(getErrorMessage(errCode, userAllowance?.userType));
+        setErrorCode(errCode || null);
         setStatus("error");
         fetchAllowance();
         return;
       }
 
-      setAudioUrl(data.audioUrl);
+      const generatedAudio = data.url || data.audioUrl || null;
+      setAudioUrl(generatedAudio);
       setStatus("ready");
 
-      if (data.notice) {
-        setNotice(data.notice);
+      if (data.notice || data.message) {
+        setNotice(data.notice || data.message);
         setNoticeAudio(data.noticeAudioUrl || null);
       }
 
@@ -149,7 +150,8 @@ export default function TTSWorkspace() {
           block: "center",
         });
       }, 100);
-    } catch {
+    } catch (err) {
+      console.error("generate_speech_error", err);
       setError("Something went wrong. Please check your connection and try again.");
       setStatus("error");
     }
@@ -194,13 +196,13 @@ export default function TTSWorkspace() {
         </div>
       )}
 
-      {/* ── 3-COLUMN STUDIO LAYOUT (Matching user uploaded image) ── */}
+      {/* ── 3-COLUMN STUDIO LAYOUT (Mobile: Studio Top, Voice Controls Middle, Ad Space Bottom) ── */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-start gap-5 lg:gap-6">
-        {/* 1. LEFT COLUMN: AD SPACE & PROMO CARD */}
-        <AdSpacePromo />
+        {/* 1. LEFT COLUMN: AD SPACE & PROMO CARD (Mobile: bottom/order-3, Desktop: left/order-1) */}
+        <AdSpacePromo className="order-3 lg:order-1" />
 
-        {/* 2. CENTER COLUMN: AI VOICE STUDIO SCRIPT EDITOR & CONVERT BUTTON */}
-        <div className="flex-1 w-full min-w-0 space-y-5">
+        {/* 2. CENTER COLUMN: AI VOICE STUDIO (Mobile: top/order-1, Desktop: center/order-2) */}
+        <div className="order-1 lg:order-2 flex-1 w-full min-w-0 space-y-5">
           <ScriptEditor
             text={text}
             onChange={setText}
@@ -300,7 +302,7 @@ export default function TTSWorkspace() {
           />
         </div>
 
-        {/* 3. RIGHT COLUMN: VOICE CONTROLS & AVATAR SELECTION */}
+        {/* 3. RIGHT COLUMN: VOICE CONTROLS & AVATAR SELECTION (Mobile: middle/order-2, Desktop: right/order-3) */}
         <VoiceControls
           lang={lang}
           voice={voice}
@@ -308,8 +310,28 @@ export default function TTSWorkspace() {
           onLangChange={setLang}
           onVoiceChange={setVoice}
           onSpeedChange={setSpeed}
+          className="order-2 lg:order-3"
         />
       </div>
     </section>
   );
+}
+
+function getErrorMessage(code?: string, userType?: string) {
+  switch (code) {
+    case "daily_limit_reached":
+      return userType === "guest"
+        ? "You have reached your 500-character guest allowance. Sign in to get 500 extra characters!"
+        : "You have reached your daily allowance limit. Please recharge or upgrade to continue.";
+    case "text_too_long":
+      return "Conversions are limited to 500 characters. Please trim your text.";
+    case "insufficient_credits":
+      return "You do not have enough credits to complete this conversion. Please recharge your account.";
+    case "voice_not_allowed":
+      return "This premium studio voice requires an active Pro subscription.";
+    case "capacity_reached":
+      return "Our servers are currently experiencing high demand. Please try again in a few moments.";
+    default:
+      return "Failed to generate speech. Please try again.";
+  }
 }

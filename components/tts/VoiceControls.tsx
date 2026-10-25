@@ -25,6 +25,7 @@ interface VoiceControlsProps {
   onLangChange: (lang: string) => void;
   onVoiceChange: (voice: string) => void;
   onSpeedChange: (speed: number) => void;
+  className?: string;
 }
 
 export const ALL_LANGUAGES_CATALOG: Language[] = [
@@ -154,6 +155,7 @@ export default function VoiceControls({
   onLangChange,
   onVoiceChange,
   onSpeedChange,
+  className = "",
 }: VoiceControlsProps) {
   const [styleMode, setStyleMode] = useState<string>("normal");
   const [showAllVoices, setShowAllVoices] = useState<boolean>(false);
@@ -227,7 +229,7 @@ export default function VoiceControls({
   ];
 
   return (
-    <aside className="w-full lg:w-[340px] xl:w-[370px] shrink-0 font-sans">
+    <aside className={`w-full lg:w-[340px] xl:w-[370px] shrink-0 font-sans ${className}`}>
       <div className="rounded-[28px] border border-slate-200/90 dark:border-zinc-800 bg-white dark:bg-[#0c0d12] p-5 sm:p-6 shadow-xl shadow-slate-200/40 dark:shadow-black/40 space-y-5">
         {/* ── 1. Choose Voice Avatar ── */}
         <div>
