@@ -25,7 +25,7 @@ export async function createClient() {
         setAll(cookiesToSet: CookieItem[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
+              cookieStore.set({ name, value, ...options }),
             );
           } catch {
             // setAll called from a Server Component — cookies can only be

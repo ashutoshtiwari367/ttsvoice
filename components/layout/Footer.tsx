@@ -1,7 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { siteConfig } from "@/config/site";
 
 export default function Footer() {
+  const pathname = usePathname();
+  if (pathname?.startsWith("/studio")) {
+    return null;
+  }
+
   return (
     <footer className="mt-auto border-t border-black/[0.06] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.015] backdrop-blur-xl transition-colors">
       <div className="mx-auto max-w-7xl px-5 py-14 lg:px-8">

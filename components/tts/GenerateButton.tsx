@@ -7,6 +7,7 @@ interface GenerateButtonProps {
   extraChars: number;
   remainingAllowance: number;
   onClick: () => void;
+  userType?: "guest" | "free" | "premium";
 }
 
 export default function GenerateButton({
@@ -16,15 +17,30 @@ export default function GenerateButton({
   extraChars,
   remainingAllowance,
   onClick,
+  userType = "guest",
 }: GenerateButtonProps) {
+  const handleButtonClick = () => {
+    if (isOverLimit) {
+      if (typeof window !== "undefined") {
+        window.location.href = userType === "guest" ? "/signup" : "/pricing";
+      }
+      return;
+    }
+    onClick();
+  };
+
   return (
     <div className="flex flex-col items-center justify-center pt-2">
       <button
         type="button"
-        onClick={onClick}
-        disabled={disabled}
+        onClick={handleButtonClick}
+        disabled={generating || (!isOverLimit && disabled)}
         className={`group relative flex w-full max-w-lg items-center justify-center gap-3 rounded-2xl sm:rounded-full px-8 py-4 text-base sm:text-lg font-black tracking-wide text-white transition-all duration-300 shadow-xl ${
-          disabled
+          generating
+            ? "cursor-wait bg-slate-400 dark:bg-zinc-700 opacity-80"
+            : isOverLimit
+            ? "bg-gradient-to-r from-red-600 via-[#ff5500] to-orange-500 hover:scale-[1.02] active:scale-[0.98] shadow-red-500/25 hover:shadow-red-500/40 cursor-pointer"
+            : disabled
             ? "cursor-not-allowed bg-slate-300 dark:bg-zinc-800 text-slate-500 shadow-none opacity-70"
             : "bg-gradient-to-r from-[#ff6a1f] via-[#ff5500] to-[#ff3b00] hover:scale-[1.02] active:scale-[0.98] shadow-orange-500/30 hover:shadow-orange-500/50 cursor-pointer"
         }`}
@@ -54,9 +70,17 @@ export default function GenerateButton({
             <span>Generating Studio Speech...</span>
           </>
         ) : isOverLimit ? (
-          <>
-            <span>⚠️ Trim {extraChars} character(s) to convert</span>
-          </>
+          <div className="flex items-center gap-2">
+            <span>🔒</span>
+            <span>
+              {userType === "guest"
+                ? "Create Account to Convert Full Script"
+                : "Upgrade Plan to Convert Full Script"}
+            </span>
+            <span className="text-xl transition-transform duration-200 group-hover:translate-x-1">
+              →
+            </span>
+          </div>
         ) : remainingAllowance <= 0 ? (
           <>
             <span>Allowance Exhausted • Please Recharge</span>
@@ -80,11 +104,17 @@ export default function GenerateButton({
       </button>
 
       {/* Micro-hint under button */}
-      {!disabled && !generating && (
+      {isOverLimit ? (
+        <p className="mt-2 text-center text-xs font-bold text-red-600 dark:text-red-400 animate-fadeIn">
+          {userType === "guest"
+            ? "Free accounts unlock 5,000+ characters • Convert full script without trimming!"
+            : "Upgrade to Pro Studio to convert up to 10,000+ characters at once!"}
+        </p>
+      ) : !disabled && !generating ? (
         <p className="mt-2 text-center text-[11px] font-medium text-slate-400 dark:text-zinc-500">
           Fast Neural Generation • High Quality MP3 Download
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

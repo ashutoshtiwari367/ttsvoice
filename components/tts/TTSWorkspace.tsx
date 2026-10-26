@@ -10,6 +10,7 @@ import VoiceControls from "./VoiceControls";
 import GenerateButton from "./GenerateButton";
 import AudioResult from "./AudioResult";
 import RecentConversions from "./RecentConversions";
+import PremiumStudioWorkspace from "./PremiumStudioWorkspace";
 
 type Status = "idle" | "generating" | "ready" | "error";
 
@@ -65,11 +66,9 @@ export default function TTSWorkspace() {
 
   useEffect(() => {
     fetchAllowance();
-    window.addEventListener("focus", fetchAllowance);
     window.addEventListener("auth-changed", fetchAllowance);
     window.addEventListener("credits-updated", fetchAllowance);
     return () => {
-      window.removeEventListener("focus", fetchAllowance);
       window.removeEventListener("auth-changed", fetchAllowance);
       window.removeEventListener("credits-updated", fetchAllowance);
     };
@@ -88,6 +87,7 @@ export default function TTSWorkspace() {
 
   // Character calculations
   const isPremium = userAllowance?.isPremium === true;
+
   const singleCap = isPremium
     ? (userAllowance?.reqCap ?? 10000)
     : 500;
@@ -168,34 +168,17 @@ export default function TTSWorkspace() {
     setNoticeAudio(null);
   };
 
+  if (isPremium) {
+    return (
+      <PremiumStudioWorkspace
+        initialText={text}
+        userAllowance={userAllowance}
+      />
+    );
+  }
+
   return (
     <section id="tool" className="mx-auto max-w-[1440px] px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-16">
-      {/* Pro Subscriber Quick Status Bar (if logged in with active subscription) */}
-      {isPremium && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.08] dark:bg-emerald-950/30 px-5 py-2.5 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="flex size-6 items-center justify-center rounded-lg bg-emerald-500 text-white text-xs font-black">
-              ⚡
-            </span>
-            <span className="font-bold text-slate-800 dark:text-zinc-200">
-              Pro Studio Active: Customer #{userAllowance?.customerNo ?? "10000000"} ({userAllowance?.activePlanName ?? "Standard Pack"})
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 font-semibold">
-            <Link
-              href="/account"
-              className="rounded-full bg-emerald-500/20 border border-emerald-500/30 px-3.5 py-1 font-extrabold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/30 transition"
-            >
-              Manage in Account →
-            </Link>
-            <span className="text-slate-500 dark:text-zinc-400">
-              Priority GPU Acceleration
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* ── 3-COLUMN STUDIO LAYOUT (Mobile: Studio Top, Voice Controls Middle, Ad Space Bottom) ── */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-start gap-5 lg:gap-6">
         {/* 1. LEFT COLUMN: AD SPACE & PROMO CARD (Mobile: bottom/order-3, Desktop: left/order-1) */}
@@ -229,6 +212,7 @@ export default function TTSWorkspace() {
             extraChars={extraChars}
             remainingAllowance={remainingAllowance}
             onClick={generateSpeech}
+            userType={userAllowance?.userType ?? "guest"}
           />
 
           {/* Error Message Alert */}
@@ -246,10 +230,10 @@ export default function TTSWorkspace() {
                 errorCode === "text_too_long" ||
                 errorCode === "voice_not_allowed") && (
                 <Link
-                  href={userAllowance?.isAuthenticated ? "/pricing" : "/login"}
-                  className="rounded-xl bg-red-600 hover:bg-red-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition"
+                  href={userAllowance?.isAuthenticated ? "/pricing" : "/signup"}
+                  className="rounded-xl bg-gradient-to-r from-[#ff5500] to-[#ff7324] hover:from-[#f05000] hover:to-[#ff6815] px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition"
                 >
-                  {userAllowance?.isAuthenticated ? "View Packs & Pricing →" : "Sign In Free →"}
+                  {userAllowance?.isAuthenticated ? "View Packs & Pricing →" : "Create Free Account →"}
                 </Link>
               )}
             </div>
@@ -310,6 +294,8 @@ export default function TTSWorkspace() {
           onLangChange={setLang}
           onVoiceChange={setVoice}
           onSpeedChange={setSpeed}
+          isAuthenticated={userAllowance?.isAuthenticated === true}
+          onApplyTemplate={(tplText) => setText(tplText)}
           className="order-2 lg:order-3"
         />
       </div>
@@ -324,7 +310,9 @@ function getErrorMessage(code?: string, userType?: string) {
         ? "You have reached your 500-character guest allowance. Sign in to get 500 extra characters!"
         : "You have reached your daily allowance limit. Please recharge or upgrade to continue.";
     case "text_too_long":
-      return "Conversions are limited to 500 characters. Please trim your text.";
+      return userType === "guest"
+        ? "Character limit exceeded! Please create a free account or log in to convert longer scripts without trimming."
+        : "Character limit exceeded! Please upgrade to Pro Studio to convert longer scripts without trimming.";
     case "insufficient_credits":
       return "You do not have enough credits to complete this conversion. Please recharge your account.";
     case "voice_not_allowed":

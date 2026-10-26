@@ -134,29 +134,23 @@ export default function ScriptEditor({
           </div>
         </div>
 
-        {/* ── Textarea with extra characters highlight ── */}
+        {/* ── Textarea with character limit styling ── */}
         <div
           className={`relative rounded-2xl border transition-all duration-200 ${
             isOverLimit
-              ? "border-red-400 dark:border-red-500 bg-red-50/20 dark:bg-red-950/20 ring-2 ring-red-500/10"
+              ? "border-red-500 bg-red-50/30 dark:bg-red-950/20 ring-2 ring-red-500/20"
               : "border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950/50 focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-500/10"
           }`}
         >
-          {/* Synchronized Highlighter Backdrop (Over-limit characters in reddish) */}
-          <div
-            ref={backdropRef}
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 overflow-auto whitespace-pre-wrap break-words p-4 font-sans text-sm sm:text-base leading-relaxed text-transparent select-none"
-          >
-            <span>{validSlice}</span>
-            {isOverLimit && (
-              <mark className="rounded-xs bg-red-500/25 dark:bg-red-500/35 text-transparent underline decoration-red-500 decoration-wavy decoration-1">
-                {extraSlice}
-              </mark>
-            )}
-          </div>
+          {/* Over-limit status pill on top right */}
+          {isOverLimit && (
+            <div className="absolute top-3 right-16 z-20 flex items-center gap-1.5 rounded-full bg-red-100 dark:bg-red-950/90 border border-red-300 dark:border-red-800 px-2.5 py-0.5 text-[11px] font-black text-red-700 dark:text-red-300 shadow-2xs">
+              <span>🔒</span>
+              <span>Character Limit Exceeded</span>
+            </div>
+          )}
 
-          {/* Actual Editable Textarea */}
+          {/* Actual Editable Textarea (Turns red with low opacity when over limit) */}
           <textarea
             ref={textareaRef}
             value={text}
@@ -164,7 +158,11 @@ export default function ScriptEditor({
             onScroll={handleScroll}
             placeholder="Paste or type your script here in Hindi, English, Tamil, Marathi, or any Indian/global language..."
             rows={10}
-            className="relative z-10 w-full resize-y bg-transparent p-4 font-sans text-sm sm:text-base leading-relaxed text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-hidden min-h-[260px] sm:min-h-[290px]"
+            className={`relative z-10 w-full resize-y bg-transparent p-4 font-sans text-sm sm:text-base leading-relaxed placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-hidden min-h-[260px] sm:min-h-[290px] transition-all duration-200 ${
+              isOverLimit
+                ? "text-red-600 dark:text-red-400 opacity-60 font-medium selection:bg-red-200 dark:selection:bg-red-900"
+                : "text-slate-900 dark:text-zinc-100 opacity-100"
+            }`}
           />
 
           {text && (
@@ -178,11 +176,24 @@ export default function ScriptEditor({
           )}
         </div>
 
-        {/* ── Character Count Bar (Remaining chars hidden from studio, viewable in Account) ── */}
+        {/* ── Character Count Bar ── */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 dark:border-zinc-800/80 bg-slate-50/70 dark:bg-zinc-900/40 p-3 sm:px-4 sm:py-2.5 text-xs">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-lg bg-white dark:bg-zinc-800 px-3 py-1 font-semibold text-slate-600 dark:text-zinc-300 shadow-2xs border border-slate-200/60 dark:border-zinc-700">
-              Input Script: <strong className="text-slate-900 dark:text-white font-extrabold">{currentCount} / {allowedLimit} characters</strong>
+            <span
+              className={`rounded-lg px-3 py-1 font-semibold shadow-2xs border transition ${
+                isOverLimit
+                  ? "bg-red-50 dark:bg-red-950/60 border-red-200 dark:border-red-900 text-red-700 dark:text-red-300"
+                  : "bg-white dark:bg-zinc-800 border-slate-200/60 dark:border-zinc-700 text-slate-600 dark:text-zinc-300"
+              }`}
+            >
+              Input Script:{" "}
+              <strong
+                className={`font-extrabold ${
+                  isOverLimit ? "text-red-600 dark:text-red-400" : "text-slate-900 dark:text-white"
+                }`}
+              >
+                {currentCount} / {allowedLimit} characters
+              </strong>
             </span>
 
             <Link
@@ -217,19 +228,54 @@ export default function ScriptEditor({
           </div>
         </div>
 
-        {/* Over-limit Warning notice if text exceeds limit */}
+        {/* ── High-Converting Call to Action Banner (Replaces Trim Button) ── */}
         {isOverLimit && (
-          <div className="flex items-center justify-between gap-2 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 p-3 text-xs text-red-700 dark:text-red-300">
-            <span>
-              ⚠️ <strong>Character limit exceeded!</strong> You have {extraChars} extra character(s) highlighted in red. Please trim to {allowedLimit} to convert.
-            </span>
-            <button
-              type="button"
-              onClick={() => onChange(text.slice(0, allowedLimit))}
-              className="shrink-0 rounded-lg bg-red-600 px-2.5 py-1 text-white font-bold hover:bg-red-700 transition"
-            >
-              Trim to {allowedLimit}
-            </button>
+          <div className="rounded-2xl border-2 border-red-500/50 bg-gradient-to-br from-red-500/10 via-orange-500/10 to-amber-500/5 dark:from-red-950/50 dark:via-orange-950/30 dark:to-zinc-900/60 p-4 sm:p-5 shadow-lg shadow-red-500/5 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-red-500 text-white text-lg font-black shadow-md shadow-red-500/30">
+                  🔒
+                </span>
+                <div>
+                  <h4 className="text-sm sm:text-base font-black text-red-600 dark:text-red-400 flex items-center gap-2">
+                    <span>Character Limit Exceeded</span>
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-zinc-300 font-medium mt-1 leading-relaxed">
+                    {userType === "guest"
+                      ? "Guest conversion limit is 500 characters. Create a free account or log in to unlock higher limits and convert your full script!"
+                      : "You have exceeded your plan's character limit. Upgrade to Pro Studio to unlock up to 10,000+ characters at once!"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 sm:self-center shrink-0 pl-12 sm:pl-0">
+                {userType === "guest" ? (
+                  <>
+                    <Link
+                      href="/signup"
+                      className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#ff5500] to-[#ff7324] hover:from-[#f05000] hover:to-[#ff6815] text-white px-4 py-2.5 text-xs font-black shadow-md shadow-orange-500/25 transition active:scale-95 cursor-pointer text-center"
+                    >
+                      <span>✨ Create Free Account</span>
+                      <span>→</span>
+                    </Link>
+                    <Link
+                      href="/login"
+                      className="rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 px-3.5 py-2.5 text-xs font-bold transition text-center"
+                    >
+                      Log In
+                    </Link>
+                  </>
+                ) : (
+                  <Link
+                    href="/pricing"
+                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#ff5500] to-[#ff7324] hover:from-[#f05000] hover:to-[#ff6815] text-white px-4 py-2.5 text-xs font-black shadow-md shadow-orange-500/25 transition active:scale-95 cursor-pointer text-center"
+                  >
+                    <span>⚡ Upgrade Plan</span>
+                    <span>→</span>
+                  </Link>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

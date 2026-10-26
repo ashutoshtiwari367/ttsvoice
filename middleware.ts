@@ -44,19 +44,19 @@ export async function middleware(request: NextRequest) {
     (c) => c.name.includes('-auth-token') || c.name.startsWith('sb-')
   );
 
-  // Skip remote auth roundtrip for API routes (they authenticate themselves)
-  // and for guest visitors on public routes with no auth cookies
-  if (!isProtected && !hasAuthCookie) {
+  // Remote auth roundtrip is ONLY required for protected routes (/account, etc.)
+  // Public pages, studio, marketing, and api routes pass through immediately with zero latency.
+  if (!isProtected) {
     return supabaseResponse;
   }
 
-  // Refresh the session only when needed (protected route or user with auth cookies)
+  // Verify session for protected route
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   // ── Protected routes ────────────────────────────────────────────────────────
-  if (isProtected && !user) {
+  if (!user) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
     loginUrl.searchParams.set('next', pathname);

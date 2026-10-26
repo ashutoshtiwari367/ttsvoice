@@ -42,12 +42,10 @@ export default function Header() {
       }
     );
 
-    window.addEventListener("focus", checkUser);
     window.addEventListener("auth-changed", checkUser);
 
     return () => {
       listener.subscription.unsubscribe();
-      window.removeEventListener("focus", checkUser);
       window.removeEventListener("auth-changed", checkUser);
     };
   }, [pathname]);
@@ -120,6 +118,15 @@ export default function Header() {
       return (
         <div className="flex items-center gap-2">
           <Link
+            href="/studio"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 px-3 py-1.5 text-xs font-bold text-[#ff5500] dark:text-orange-400 transition shadow-xs"
+            title="Open IndianTTS Pro Studio"
+          >
+            <span>👑</span>
+            <span>Studio</span>
+          </Link>
+
+          <Link
             href="/history"
             className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition shadow-xs ${
               isHistoryActive
@@ -165,6 +172,16 @@ export default function Header() {
     return (
       <div className={`flex items-center gap-2 sm:gap-2.5 ${mobile ? "w-full justify-between" : ""}`}>
         <Link
+          href="/studio"
+          onClick={() => setMenuOpen(false)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 px-3 py-1.5 text-xs font-bold text-[#ff5500] dark:text-orange-400 transition shadow-xs"
+          title="Open IndianTTS Pro Studio"
+        >
+          <span>👑</span>
+          <span>Studio</span>
+        </Link>
+
+        <Link
           href="/history"
           onClick={() => setMenuOpen(false)}
           className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition shadow-xs ${
@@ -197,6 +214,10 @@ export default function Header() {
       </div>
     );
   };
+
+  if (pathname?.startsWith("/studio")) {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-black/[0.06] dark:border-white/[0.08] bg-white/70 dark:bg-[#06060a]/80 backdrop-blur-xl transition-colors">
