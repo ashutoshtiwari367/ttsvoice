@@ -13,6 +13,14 @@ type CookieItem = {
  * 2. Redirects unauthenticated users away from protected routes.
  */
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const isProtected = pathname.startsWith('/account');
+
+  // Public pages, studio, marketing, and API routes pass through immediately with zero overhead
+  if (!isProtected) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -24,8 +32,6 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet: CookieItem[]) {
-          // Write cookies back to both the request and the outgoing response
-          // so the client and server stay in sync.
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
@@ -37,18 +43,6 @@ export async function middleware(request: NextRequest) {
       },
     },
   );
-
-  const { pathname } = request.nextUrl;
-  const isProtected = pathname.startsWith('/account');
-  const hasAuthCookie = request.cookies.getAll().some(
-    (c) => c.name.includes('-auth-token') || c.name.startsWith('sb-')
-  );
-
-  // Remote auth roundtrip is ONLY required for protected routes (/account, etc.)
-  // Public pages, studio, marketing, and api routes pass through immediately with zero latency.
-  if (!isProtected) {
-    return supabaseResponse;
-  }
 
   // Verify session for protected route
   const {
@@ -69,9 +63,8 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Run on all paths except Next.js internals and static assets.
-     * Adjust the matcher if you add more protected routes.
+     * Only run middleware on protected routes to avoid per-request overhead on public pages & APIs.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/account/:path*',
   ],
 };

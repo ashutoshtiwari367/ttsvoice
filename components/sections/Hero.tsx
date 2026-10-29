@@ -42,11 +42,11 @@ export default function Hero() {
         </Link>
 
         <Link
-          href="/pricing"
+          href="/signup"
           className="btn-ghost px-6 py-3.5 text-sm sm:text-base font-semibold"
         >
-          <span>View Credit Packs</span>
-          <span className="text-xs text-orange-500 font-bold">(from ₹29)</span>
+          <span>Create Free Account</span>
+          <span className="text-xs text-emerald-500 font-bold">(100% Free)</span>
         </Link>
       </div>
 

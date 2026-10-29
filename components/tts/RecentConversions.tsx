@@ -31,7 +31,7 @@ export default function RecentConversions({
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch("/api/history");
+      const res = await fetch("/api/history", { cache: "no-store" });
       if (res.ok) {
         const json: HistoryResponse = await res.json();
         setHistory(json.history || []);
@@ -48,6 +48,10 @@ export default function RecentConversions({
 
   useEffect(() => {
     fetchHistory();
+    window.addEventListener("auth-changed", fetchHistory);
+    return () => {
+      window.removeEventListener("auth-changed", fetchHistory);
+    };
   }, [refreshTrigger]);
 
   useEffect(() => {
@@ -85,11 +89,16 @@ export default function RecentConversions({
     audio.onerror = () => setPlayingId(null);
   };
 
-  if (loading && history.length === 0) {
+  const activeHistory = history.filter((item) => {
+    const expiresAtMs = new Date(item.expiresAt).getTime();
+    return now < expiresAtMs && !item.isExpired && !!item.audioUrl;
+  });
+
+  if (loading && activeHistory.length === 0) {
     return null;
   }
 
-  if (history.length === 0) {
+  if (activeHistory.length === 0) {
     return null;
   }
 
@@ -110,7 +119,7 @@ export default function RecentConversions({
                 : "Recent Cloud Conversions"}
             </h3>
             <span className="rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20 px-2 py-0.5 text-[10px] font-bold">
-              {history.length} Saved
+              {activeHistory.length} Saved
             </span>
           </div>
 
@@ -133,7 +142,7 @@ export default function RecentConversions({
 
       {/* ── Conversions List ── */}
       <div className="mt-4 divide-y divide-black/[0.05] dark:divide-white/[0.05] space-y-3">
-        {history.slice(0, 5).map((item) => {
+        {activeHistory.slice(0, 5).map((item) => {
           // Calculate remaining seconds live
           const expiresAtMs = new Date(item.expiresAt).getTime();
           const isExpiredLive = now >= expiresAtMs || item.isExpired;

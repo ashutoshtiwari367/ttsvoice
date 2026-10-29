@@ -38,7 +38,7 @@ interface PlanRow {
 
 const DEFAULTS: Record<LimitTier, Omit<PlanLimits, 'planId'>> = {
   anon: { reqChars: 500, dayChars: 500,  weekChars: 10_000, monthChars: 0,       dayGenerations: 0, ipDayChars: 10_000, ipDayGenerations: 0, allowPremiumVoices: false },
-  free: { reqChars: 500, dayChars: 500, weekChars: 50_000, monthChars: 0,       dayGenerations: 0, ipDayChars: 20_000, ipDayGenerations: 0, allowPremiumVoices: true },
+  free: { reqChars: 1000, dayChars: 1000, weekChars: 50_000, monthChars: 0,       dayGenerations: 0, ipDayChars: 20_000, ipDayGenerations: 0, allowPremiumVoices: true },
   paid: { reqChars: 10_000, dayChars: 0,      weekChars: 0,      monthChars: 200_000, dayGenerations: 0, ipDayChars: 0,      ipDayGenerations: 0, allowPremiumVoices: true },
 };
 

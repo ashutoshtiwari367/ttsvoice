@@ -1,6 +1,22 @@
-import { admin } from '@/lib/supabase/admin';
-import { config } from '@/lib/config';
+/**
+ * ==============================================================================
+ * lib/tts/catalog.ts — IN-MEMORY LANGUAGE & VOICE CATALOG (ZERO DB DELAY)
+ * ==============================================================================
+ * All languages and voices are read directly in-memory from `config/control.ts`
+ * (merged with any legacy IDs from `catalog-fallback.ts`) instead of querying
+ * Supabase tables (`tts_languages` / `models_voices`) on runtime requests.
+ * ==============================================================================
+ */
+
+import {
+  STUDIO_LANGUAGES,
+  ALL_LANGUAGES_CATALOG,
+  type Language,
+  type Voice,
+} from '@/config/control';
 import { FALLBACK_VOICES, FALLBACK_LANGUAGES } from '@/lib/tts/catalog-fallback';
+
+export { STUDIO_LANGUAGES, ALL_LANGUAGES_CATALOG, type Language, type Voice };
 
 export interface VoiceRow {
   id: string;
@@ -22,83 +38,102 @@ export interface LanguageRow {
 }
 
 export interface VoicePublic {
-  id: string; label: string; gender: string; tier: string; preview_url: string | null;
+  id: string;
+  label: string;
+  gender: string;
+  tier: string;
+  preview_url: string | null;
 }
+
 export interface LanguagePublic {
-  code: string; label: string; voices: VoicePublic[];
+  code: string;
+  label: string;
+  flag: string;
+  voices: VoicePublic[];
 }
 
-let voiceCache: VoiceRow[] | null = null;
-let voiceAt = 0;
-let langCache: LanguageRow[] | null = null;
-let langAt = 0;
+// ── Precomputed Static In-Memory Catalog (Built Once at Module Load, 0ms Access) ──
 
-async function fetchVoices(): Promise<VoiceRow[]> {
-  const { data, error } = await admin
-    .from('models_voices')
-    .select('id,language_code,display_name,gender,provider,tier,cost_per_millchar,cost_currency,preview_url,sort_order')
-    .eq('is_active', true)
-    .order('sort_order', { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as VoiceRow[];
+const PRIMARY_LANGUAGES: LanguageRow[] = STUDIO_LANGUAGES.map((l, idx) => ({
+  code: l.code,
+  label: l.label,
+  sort_order: idx + 1,
+}));
+
+const primaryLangCodes = new Set(PRIMARY_LANGUAGES.map((l) => l.code));
+
+export const STATIC_LANGUAGES: LanguageRow[] = [
+  ...PRIMARY_LANGUAGES,
+  ...FALLBACK_LANGUAGES.filter((l) => !primaryLangCodes.has(l.code)),
+];
+
+const SUPPORTED_LANG_SET = new Set<string>(STATIC_LANGUAGES.map((l) => l.code));
+
+const PRIMARY_VOICES: VoiceRow[] = STUDIO_LANGUAGES.flatMap((lang, lIdx) =>
+  lang.voices.map((v, vIdx) => ({
+    id: v.id,
+    language_code: lang.code,
+    display_name: v.label,
+    gender: v.gender,
+    provider: v.provider ?? 'google',
+    tier: v.tier ?? 'free',
+    cost_per_millchar: v.costPerMillchar ?? (v.tier === 'paid' ? 16 : 4),
+    cost_currency: v.costCurrency ?? 'USD',
+    preview_url: v.preview_url ?? null,
+    sort_order: (lIdx + 1) * 10 + (vIdx + 1),
+  }))
+);
+
+const primaryVoiceIds = new Set(PRIMARY_VOICES.map((v) => v.id));
+
+export const STATIC_VOICES: VoiceRow[] = [
+  ...PRIMARY_VOICES,
+  ...FALLBACK_VOICES.filter((v) => !primaryVoiceIds.has(v.id)),
+];
+
+const VOICE_BY_ID = new Map<string, VoiceRow>(STATIC_VOICES.map((v) => [v.id, v]));
+
+export const CLIENT_CATALOG: LanguagePublic[] = STUDIO_LANGUAGES.map((l) => ({
+  code: l.code,
+  label: l.label,
+  flag: l.flag,
+  voices: l.voices.map((v) => ({
+    id: v.id,
+    label: v.label,
+    gender: v.gender,
+    tier: v.tier ?? 'free',
+    preview_url: v.preview_url ?? null,
+  })),
+}));
+
+// ── Synchronous O(1) Helpers (0ms, No Async Overhead) ──
+
+export function isSupportedLanguage(code: string): boolean {
+  return SUPPORTED_LANG_SET.has(code);
 }
 
-async function fetchLanguages(): Promise<LanguageRow[]> {
-  const { data, error } = await admin
-    .from('tts_languages')
-    .select('code,label,sort_order')
-    .eq('is_active', true)
-    .order('sort_order', { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as LanguageRow[];
+export function getVoiceSync(id: string): VoiceRow | undefined {
+  return VOICE_BY_ID.get(id);
 }
+
+export function getCatalogForClientSync(): LanguagePublic[] {
+  return CLIENT_CATALOG;
+}
+
+// ── Backwards-Compatible Async Exports (Resolve Instantly from Memory, No DB Call) ──
 
 export async function getActiveVoices(): Promise<VoiceRow[]> {
-  const now = Date.now();
-  if (voiceCache && now - voiceAt < config.cacheTtlMs) return voiceCache;
-  try {
-    const rows = await fetchVoices();
-    const existingIds = new Set(rows.map((r) => r.id));
-    const merged = [...rows, ...FALLBACK_VOICES.filter((v) => !existingIds.has(v.id))];
-    if (merged.length > 0) { voiceCache = merged; voiceAt = now; return merged; }
-    return voiceCache ?? FALLBACK_VOICES;
-  } catch {
-    return voiceCache ?? FALLBACK_VOICES;
-  }
+  return STATIC_VOICES;
 }
 
-async function getActiveLanguages(): Promise<LanguageRow[]> {
-  const now = Date.now();
-  if (langCache && now - langAt < config.cacheTtlMs) return langCache;
-  try {
-    const rows = await fetchLanguages();
-    const existingCodes = new Set(rows.map((r) => r.code));
-    const merged = [...rows, ...FALLBACK_LANGUAGES.filter((l) => !existingCodes.has(l.code))];
-    if (merged.length > 0) { langCache = merged; langAt = now; return merged; }
-    return langCache ?? FALLBACK_LANGUAGES;
-  } catch {
-    return langCache ?? FALLBACK_LANGUAGES;
-  }
+export async function getActiveLanguages(): Promise<LanguageRow[]> {
+  return STATIC_LANGUAGES;
 }
 
 export async function getVoice(id: string): Promise<VoiceRow | undefined> {
-  const voices = await getActiveVoices();
-  return voices.find((v) => v.id === id);
+  return VOICE_BY_ID.get(id);
 }
 
-// Shaped for the frontend selector, grouped by language (languages drive the list).
 export async function getCatalogForClient(): Promise<LanguagePublic[]> {
-  const [voices, languages] = await Promise.all([getActiveVoices(), getActiveLanguages()]);
-  const labelByCode = new Map(languages.map((l) => [l.code, l.label]));
-  const out: LanguagePublic[] = languages.map((l) => ({ code: l.code, label: l.label, voices: [] }));
-  const byCode = new Map(out.map((o) => [o.code, o]));
-  for (const v of voices) {
-    const group = byCode.get(v.language_code);
-    if (!group) continue;
-    group.voices.push({
-      id: v.id, label: v.display_name, gender: v.gender, tier: v.tier, preview_url: v.preview_url,
-    });
-  }
-  // keep only languages that actually have active voices
-  return out.filter((o) => o.voices.length > 0 || labelByCode.has(o.code));
+  return CLIENT_CATALOG;
 }

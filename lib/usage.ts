@@ -262,6 +262,57 @@ export interface GenerationLog {
   isNewSubject?: boolean | null;
 }
 
+async function tryInsertGenerationPayload(payload: Record<string, any>) {
+  let current = { ...payload };
+  let { error } = await admin.from('tts_generations').insert(current);
+  if (!error) return { error: null, finalPayload: current };
+
+  // Strip optional expires_at column if not yet migrated in DB
+  if (
+    current.expires_at !== undefined &&
+    (error.code === 'PGRST204' ||
+      error.code === '42703' ||
+      /expires_at|column|schema cache/i.test(error.message || ''))
+  ) {
+    delete current.expires_at;
+    const res2 = await admin.from('tts_generations').insert(current);
+    error = res2.error;
+    if (!error) return { error: null, finalPayload: current };
+  }
+
+  // Strip optional geo/client columns if migration 0004 is not yet applied
+  if (
+    error &&
+    (error.code === 'PGRST204' ||
+      error.code === '42703' ||
+      /column|schema cache/i.test(error.message || ''))
+  ) {
+    const core = { ...current };
+    delete core.expires_at;
+    delete core.continent_code;
+    delete core.region_code;
+    delete core.city;
+    delete core.timezone;
+    delete core.latitude;
+    delete core.longitude;
+    delete core.postal_code;
+    delete core.asn;
+    delete core.device_type;
+    delete core.browser_family;
+    delete core.os_family;
+    delete core.browser_lang;
+    delete core.referrer_host;
+    delete core.is_new_subject;
+    current = core;
+
+    const res3 = await admin.from('tts_generations').insert(current);
+    error = res3.error;
+    if (!error) return { error: null, finalPayload: current };
+  }
+
+  return { error, finalPayload: current };
+}
+
 export async function logGeneration(r: GenerationLog) {
   const payload: Record<string, any> = {
     brand_id: r.brandId,
@@ -308,15 +359,57 @@ export async function logGeneration(r: GenerationLog) {
     payload.expires_at = r.expiresAt;
   }
 
-  const { error } = await admin.from('tts_generations').insert(payload);
-  if (error) {
-    // If column expires_at does not yet exist in Supabase table, retry without it
-    if (payload.expires_at) {
-      delete payload.expires_at;
-      const { error: retryError } = await admin.from('tts_generations').insert(payload);
-      if (retryError) console.error('log_generation_retry_failed', retryError);
-    } else {
-      console.error('log_generation_failed', error);
+  // Step 1: Attempt insert (automatically stripping any unmigrated columns first)
+  let { error, finalPayload } = await tryInsertGenerationPayload(payload);
+  if (!error) return;
+
+  // Step 2: Handle Foreign Key violation (23503) — seed missing voice/language/customer & retry
+  if (error.code === '23503') {
+    try {
+      await admin.from('tts_languages').upsert(
+        { code: r.languageCode, label: r.languageCode, is_active: true, sort_order: 99 },
+        { onConflict: 'code' }
+      );
+      await admin.from('models_voices').upsert(
+        {
+          id: r.voiceId,
+          language_code: r.languageCode,
+          display_name: r.voiceId,
+          gender: 'female',
+          provider: r.provider,
+          tier: r.voiceTier,
+          cost_per_millchar: r.costPerMillcharSrc,
+          cost_currency: r.costSourceCurrency,
+          is_active: true,
+          sort_order: 99,
+        },
+        { onConflict: 'id' }
+      );
+      if (r.customerId) {
+        await admin.from('customers').upsert(
+          { id: r.customerId, brand_id: r.brandId, account_status: 'active' },
+          { onConflict: 'id' }
+        );
+      }
+
+      const fkRetry = await tryInsertGenerationPayload(finalPayload);
+      error = fkRetry.error;
+      finalPayload = fkRetry.finalPayload;
+      if (!error) return;
+
+      // If input_id still points to parked legacy table tz_tts_inputs, retry with input_id = null
+      if (error.code === '23503' && finalPayload.input_id != null) {
+        const withoutInputFk = { ...finalPayload, input_id: null };
+        const inputFkRetry = await tryInsertGenerationPayload(withoutInputFk);
+        error = inputFkRetry.error;
+        if (!error) return;
+      }
+    } catch (seedErr) {
+      console.warn('log_generation_fk_seed_warn', seedErr);
     }
+  }
+
+  if (error) {
+    console.error('log_generation_failed', error);
   }
 }

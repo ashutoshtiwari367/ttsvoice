@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, Suspense, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { setCachedAllowance, setCachedAuthUser } from "@/lib/userPreferences";
 
 function LoginForm() {
   const router = useRouter();
@@ -58,8 +59,10 @@ function LoginForm() {
         return;
       }
 
-      // Successful login
+      // Successful login — seed client cache for instant 0ms avatar render on redirect
       if (typeof window !== "undefined") {
+        setCachedAuthUser(data.user ?? null);
+        setCachedAllowance(null);
         window.dispatchEvent(new Event("auth-changed"));
       }
 
@@ -69,21 +72,8 @@ function LoginForm() {
         return;
       }
 
-      // Check if user is a Pro/Studio subscriber to route them straight to Studio
-      try {
-        const creditsRes = await fetch("/api/user/credits");
-        if (creditsRes.ok) {
-          const creditsData = await creditsRes.json();
-          if (creditsData.isPremium) {
-            window.location.href = "/studio";
-            return;
-          }
-        }
-      } catch {
-        // fallback to default
-      }
-
       window.location.href = "/text-to-speech";
+      return;
     } catch (err: any) {
       console.error("Login unexpected error:", err);
       setErrorMessage(
@@ -132,7 +122,7 @@ function LoginForm() {
   const displayError = errorMessage || callbackError;
 
   return (
-    <main className="relative flex min-h-[calc(100vh-4.5rem)] items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+    <main className="relative flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12 w-full">
       {/* Background ambient lighting */}
       <div
         aria-hidden="true"
@@ -141,18 +131,18 @@ function LoginForm() {
         <div className="size-[500px] rounded-full bg-gradient-to-tr from-orange-500/10 to-amber-500/10 blur-[100px] dark:from-orange-500/15 dark:to-amber-500/10" />
       </div>
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md mx-auto">
         {/* Navigation Tabs between Login & Signup */}
-        <div className="mb-6 flex rounded-xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 p-1 shadow-sm backdrop-blur">
+        <div className="mb-6 grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 p-1.5 shadow-sm backdrop-blur">
           <Link
             href="/login"
-            className="flex-1 rounded-lg bg-orange-600 py-2.5 text-center text-xs sm:text-sm font-bold text-white shadow-sm"
+            className="flex items-center justify-center rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 py-2.5 text-center text-xs sm:text-sm font-bold text-white shadow-sm transition"
           >
             Sign In
           </Link>
           <Link
             href="/signup"
-            className="flex-1 rounded-lg py-2.5 text-center text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
+            className="flex items-center justify-center rounded-xl py-2.5 text-center text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
           >
             Create Account
           </Link>
@@ -161,12 +151,12 @@ function LoginForm() {
         {/* Auth Card */}
         <div className="overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl dark:shadow-2xl dark:shadow-black/60 transition-colors">
           {/* Top orange gradient accent */}
-          <div className="h-2 bg-gradient-to-r from-orange-600 via-orange-500 to-amber-400" />
+          <div className="h-1.5 bg-gradient-to-r from-orange-600 via-orange-500 to-amber-400" />
 
-          <div className="px-6 py-8 sm:p-10">
+          <div className="p-6 sm:p-10">
             {/* Header */}
             <div className="text-center">
-              <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white shadow-lg shadow-orange-500/25">
+              <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white shadow-lg shadow-orange-500/25">
                 <svg viewBox="0 0 24 24" fill="none" className="size-6">
                   <path
                     d="M4 10v4h4l5 4V6l-5 4H4Z"
@@ -185,7 +175,7 @@ function LoginForm() {
               <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
                 Welcome back
               </h1>
-              <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-normal">
                 Sign in to access your IndianTTS account & character quota
               </p>
             </div>
@@ -207,7 +197,7 @@ function LoginForm() {
                     clipRule="evenodd"
                   />
                 </svg>
-                <span>{displayError}</span>
+                <span className="leading-relaxed">{displayError}</span>
               </div>
             )}
 
@@ -220,7 +210,7 @@ function LoginForm() {
                 >
                   Email address
                 </label>
-                <div className="relative">
+                <div className="relative flex items-center">
                   <input
                     id="login-email"
                     name="email"
@@ -230,9 +220,9 @@ function LoginForm() {
                     autoComplete="email"
                     required
                     placeholder="you@example.com"
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 px-4 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-orange-500 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 pl-4 pr-11 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-orange-500 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition"
                   />
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400">
                     <svg
                       className="size-4"
                       fill="none"
@@ -267,13 +257,13 @@ function LoginForm() {
                       setForgotError(null);
                       setForgotSuccess(null);
                     }}
-                    className="text-xs font-semibold text-orange-600 dark:text-orange-400 hover:underline cursor-pointer"
+                    className="text-xs font-semibold text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:underline cursor-pointer transition-colors"
                   >
                     Forgot password?
                   </button>
                 </div>
 
-                <div className="relative">
+                <div className="relative flex items-center">
                   <input
                     id="login-password"
                     name="password"
@@ -283,13 +273,13 @@ function LoginForm() {
                     autoComplete="current-password"
                     required
                     placeholder="••••••••"
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 px-4 py-3 pr-11 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-orange-500 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 pl-4 pr-11 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-orange-500 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                    className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
                   >
                     {showPassword ? (
                       <svg
@@ -331,28 +321,30 @@ function LoginForm() {
               </div>
 
               {/* Submit Button */}
-              <button
-                id="login-submit"
-                type="submit"
-                disabled={loading}
-                className="relative mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-500/25 transition hover:shadow-orange-500/35 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {loading ? (
-                  <>
-                    <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    <span>Signing in…</span>
-                  </>
-                ) : (
-                  <span>Sign In to Account</span>
-                )}
-              </button>
+              <div className="pt-1">
+                <button
+                  id="login-submit"
+                  type="submit"
+                  disabled={loading}
+                  className="relative flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 px-4 text-sm font-bold text-white shadow-lg shadow-orange-500/25 transition-all hover:shadow-orange-500/35 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {loading ? (
+                    <>
+                      <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      <span>Signing in…</span>
+                    </>
+                  ) : (
+                    <span>Sign In to Account</span>
+                  )}
+                </button>
+              </div>
             </form>
 
             <p className="mt-6 text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               New to IndianTTS?{" "}
               <Link
                 href="/signup"
-                className="font-bold text-orange-600 dark:text-orange-400 hover:underline"
+                className="font-bold text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:underline transition-colors"
               >
                 Create a free account
               </Link>
@@ -369,14 +361,14 @@ function LoginForm() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn"
         >
           <div className="w-full max-w-sm rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
                 Reset Password
               </h2>
               <button
                 type="button"
                 onClick={() => setForgotModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
               >
                 <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -384,7 +376,7 @@ function LoginForm() {
               </button>
             </div>
 
-            <p className="mt-3 text-xs text-slate-600 dark:text-slate-400">
+            <p className="mt-3 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
               Enter the email address registered with your account. We will send a secure link to reset your password.
             </p>
 
@@ -408,10 +400,10 @@ function LoginForm() {
                   onChange={(e) => setForgotEmail(e.target.value)}
                   placeholder="your.email@example.com"
                   required
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition"
                 />
 
-                <div className="flex justify-end gap-2 pt-2">
+                <div className="flex items-center justify-end gap-2.5 pt-2">
                   <button
                     type="button"
                     onClick={() => setForgotModalOpen(false)}

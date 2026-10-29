@@ -1,19 +1,33 @@
 import Link from "next/link";
-import { getPosts } from "@/lib/wordpress";
+import type { Metadata } from "next";
+import { siteConfig } from "@/config/site";
+import { resolveSiteBaseUrl } from "@/lib/seo";
+import { getPosts, getWordPressBaseUrl, stripHtml } from "@/lib/wordpress";
 
-export const metadata = {
-  title: "Blog — IndianTTS Guides, Product Updates & Stories",
-  description:
-    "Explore the latest tutorials, creator workflows, and insights on Indian & global AI voice synthesis.",
-};
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-// Clean HTML tags from excerpt for clean preview display
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+export async function generateMetadata(): Promise<Metadata> {
+  const baseUrl = await resolveSiteBaseUrl();
+  return {
+    title: `Blog — ${siteConfig.name} Guides, Product Updates & Stories`,
+    description:
+      "Explore the latest tutorials, creator workflows, and insights on Indian & global AI voice synthesis.",
+    alternates: {
+      canonical: `${baseUrl}/blog`,
+    },
+    openGraph: {
+      title: `Blog — ${siteConfig.name}`,
+      description:
+        "Explore the latest tutorials, creator workflows, and insights on Indian & global AI voice synthesis.",
+      url: `${baseUrl}/blog`,
+      type: "website",
+    },
+  };
 }
 
 export default async function BlogPage() {
-  const posts = await getPosts(18);
+  const posts = await getPosts(36);
 
   return (
     <main className="relative min-h-screen py-16 sm:py-20 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto overflow-hidden">
@@ -50,7 +64,7 @@ export default async function BlogPage() {
             Go to your WordPress Admin dashboard and publish your first article!
           </p>
           <a
-            href={`${process.env.NEXT_PUBLIC_WORDPRESS_URL || "https://olistoolblogs.tech"}/wp-admin`}
+            href={`${getWordPressBaseUrl()}/wp-admin`}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-primary mt-6 inline-flex px-5 py-2.5 text-xs font-bold"

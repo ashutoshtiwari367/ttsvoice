@@ -53,11 +53,6 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/pricing" className="text-slate-500 dark:text-slate-400 hover:text-[#ff5500] transition">
-                  Pricing &amp; Tokens
-                </Link>
-              </li>
-              <li>
                 <Link href="/blog" className="text-slate-500 dark:text-slate-400 hover:text-[#ff5500] transition">
                   Blog &amp; Updates
                 </Link>
@@ -84,11 +79,6 @@ export default function Footer() {
               <li>
                 <Link href="/signup" className="text-slate-500 dark:text-slate-400 hover:text-[#ff5500] transition">
                   Create Account
-                </Link>
-              </li>
-              <li>
-                <Link href="/pricing" className="text-slate-500 dark:text-slate-400 hover:text-[#ff5500] transition">
-                  Top-up Credits
                 </Link>
               </li>
             </ul>

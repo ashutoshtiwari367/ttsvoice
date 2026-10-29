@@ -37,10 +37,10 @@ export async function runHistoryCleanup(force = false): Promise<CleanupResult> {
   try {
     const storage = await getStorage().catch(() => null);
 
-    // Fetch successful generations with audio keys
+    // Fetch successful generations with audio keys (use '*' so missing expires_at column never errors)
     const { data: rows, error } = await admin
       .from("tts_generations")
-      .select("id, created_at, expires_at, customer_id, tier, audio_object_key, status")
+      .select("*")
       .eq("status", "success")
       .not("audio_object_key", "is", null)
       .order("created_at", { ascending: true })

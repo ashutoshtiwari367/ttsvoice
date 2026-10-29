@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { siteConfig } from "@/config/site";
+import { resolveSiteBaseUrl } from "@/lib/seo";
 import {
   getPostBySlug,
   getPosts,
   parseHeadingsAndInjectIds,
+  stripHtml,
 } from "@/lib/wordpress";
 import ReadingProgressBar from "@/components/blog/ReadingProgressBar";
 import TableOfContents from "@/components/blog/TableOfContents";
@@ -12,17 +15,19 @@ import ArticleAudioPlayer from "@/components/blog/ArticleAudioPlayer";
 import ShareButtons from "@/components/blog/ShareButtons";
 import SidebarCta from "@/components/blog/SidebarCta";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
-}
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const post = await getPostBySlug(slug);
+  const [post, baseUrl] = await Promise.all([
+    getPostBySlug(slug),
+    resolveSiteBaseUrl(),
+  ]);
 
   if (!post) {
     return {
@@ -32,11 +37,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const cleanTitle = stripHtml(post.title?.rendered || "Blog Post");
   const cleanExcerpt = stripHtml(post.excerpt?.rendered || "");
+  const canonicalUrl = `${baseUrl}/blog/${encodeURIComponent(post.slug)}`;
 
   return {
-    title: `${cleanTitle} — IndianTTS Blog`,
+    title: `${cleanTitle} — ${siteConfig.name} Blog`,
     description: cleanExcerpt.slice(0, 160),
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
+      type: "article",
+      url: canonicalUrl,
+      title: cleanTitle,
+      description: cleanExcerpt.slice(0, 160),
+      publishedTime: post.isoDate,
+      modifiedTime: post.isoModified,
+      authors: [post.authorName],
+      images: post.featuredImage ? [post.featuredImage] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
       title: cleanTitle,
       description: cleanExcerpt.slice(0, 160),
       images: post.featuredImage ? [post.featuredImage] : undefined,
@@ -46,7 +66,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function BlogPostPage({ params }: PageProps) {
   const { slug } = await params;
-  const post = await getPostBySlug(slug);
+  const [post, baseUrl] = await Promise.all([
+    getPostBySlug(slug),
+    resolveSiteBaseUrl(),
+  ]);
 
   if (!post) {
     notFound();
@@ -63,9 +86,35 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   const cleanTitle = stripHtml(post.title.rendered);
   const cleanContent = stripHtml(post.content.rendered);
+  const cleanExcerpt = stripHtml(post.excerpt?.rendered || "");
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: cleanTitle,
+    description: cleanExcerpt.slice(0, 160),
+    datePublished: post.isoDate,
+    dateModified: post.isoModified,
+    author: {
+      "@type": "Person",
+      name: post.authorName,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: siteConfig.name,
+    },
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": `${baseUrl}/blog/${encodeURIComponent(post.slug)}`,
+    },
+    ...(post.featuredImage ? { image: [post.featuredImage] } : {}),
+  };
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
       {/* Top viewport reading progress bar */}
       <ReadingProgressBar />
 

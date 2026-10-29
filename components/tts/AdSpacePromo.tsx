@@ -71,10 +71,10 @@ export default function AdSpacePromo({ className = "" }: AdSpacePromoProps) {
         {/* Bottom CTA Button */}
         <div>
           <Link
-            href="/pricing"
+            href="/signup"
             className="flex w-full items-center justify-center gap-1.5 rounded-full border-2 border-orange-500/80 bg-white/80 dark:bg-zinc-900/80 px-5 py-2.5 text-xs font-extrabold text-[#ff5500] dark:text-orange-400 shadow-sm transition hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white hover:shadow-md cursor-pointer group"
           >
-            <span>Explore Premium</span>
+            <span>Start Generating Free</span>
             <span className="transition-transform group-hover:translate-x-1">→</span>
           </Link>
         </div>

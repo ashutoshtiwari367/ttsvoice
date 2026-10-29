@@ -102,13 +102,6 @@ export default function PremiumSidebar({
                 🪙 {balance.toLocaleString()}
               </div>
             </div>
-
-            <Link
-              href="/pricing"
-              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition cursor-pointer"
-            >
-              + Top-up
-            </Link>
           </div>
 
           <div className="mt-3 h-1.5 w-full rounded-full bg-emerald-500/20 overflow-hidden">

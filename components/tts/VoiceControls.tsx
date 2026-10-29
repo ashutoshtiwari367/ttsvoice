@@ -4,252 +4,51 @@ import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import {
+  ALL_LANGUAGES_CATALOG,
+  type Language,
+  type Voice,
+} from "@/lib/tts/catalog";
+import {
+  AUDIO_CONTROL_SETTINGS,
+  DEFAULT_PRESETS,
+  PRESETS_STORAGE_KEY,
+  SPEAKING_STYLE_MODES,
+  type AudioOutputFormat,
+  type VoicePreset,
+} from "@/config/control";
+import {
+  getFavoriteVoices,
+  getUserPreferences,
+  toggleFavoriteVoiceItem,
+  type FavoriteVoiceItem,
+} from "@/lib/userPreferences";
 
-export interface Voice {
-  id: string;
-  label: string;
-  gender: string;
-  tier?: string;
-  preview_url?: string | null;
-}
-
-export interface Language {
-  code: string;
-  label: string;
-  flag: string;
-  voices: Voice[];
-}
+export { ALL_LANGUAGES_CATALOG, DEFAULT_PRESETS, type Language, type Voice, type VoicePreset };
 
 interface VoiceControlsProps {
   lang: string;
   voice: string;
   speed: number;
+  pitch?: number;
   onLangChange: (lang: string) => void;
   onVoiceChange: (voice: string) => void;
   onSpeedChange: (speed: number) => void;
+  onPitchChange?: (pitch: number) => void;
   isAuthenticated?: boolean;
   onApplyTemplate?: (text: string) => void;
   className?: string;
 }
 
-export const ALL_LANGUAGES_CATALOG: Language[] = [
-  {
-    code: "hi-IN",
-    label: "Hindi (हिन्दी)",
-    flag: "🇮🇳",
-    voices: [
-      { id: "hi-IN-Wavenet-B", label: "Arjun (अर्जुन)", gender: "male", tier: "free" },
-      { id: "hi-IN-Wavenet-A", label: "Aditi (अदिति)", gender: "female", tier: "free" },
-      { id: "hi-IN-Wavenet-D", label: "Rohit (रोहित)", gender: "male", tier: "free" },
-      { id: "hi-IN-Wavenet-C", label: "Priya (प्रिया)", gender: "female", tier: "free" },
-      { id: "hi-IN-Neural2-B", label: "Kabir Studio (कबीर)", gender: "male", tier: "paid" },
-      { id: "hi-IN-Neural2-A", label: "Ananya Studio (अनन्या)", gender: "female", tier: "paid" },
-    ],
-  },
-  {
-    code: "en-IN",
-    label: "Indian English",
-    flag: "🇮🇳",
-    voices: [
-      { id: "en-IN-Wavenet-B", label: "Dev (Corporate & News)", gender: "male", tier: "free" },
-      { id: "en-IN-Wavenet-A", label: "Isha (Natural & Smooth)", gender: "female", tier: "free" },
-      { id: "en-IN-Wavenet-D", label: "Rohan (Friendly & Tech)", gender: "male", tier: "free" },
-      { id: "en-IN-Wavenet-C", label: "Meera (Youthful Voice)", gender: "female", tier: "free" },
-      { id: "en-IN-Neural2-A", label: "Aarav Ultra (Pro Voiceover)", gender: "male", tier: "paid" },
-    ],
-  },
-  {
-    code: "ta-IN",
-    label: "Tamil (தமிழ்)",
-    flag: "🇮🇳",
-    voices: [
-      { id: "ta-IN-Wavenet-B", label: "Karthik (கார்த்திக்)", gender: "male", tier: "free" },
-      { id: "ta-IN-Wavenet-A", label: "Vani (வாணி)", gender: "female", tier: "free" },
-      { id: "ta-IN-Wavenet-C", label: "Deepa (தீபா)", gender: "female", tier: "free" },
-    ],
-  },
-  {
-    code: "te-IN",
-    label: "Telugu (తెలుగు)",
-    flag: "🇮🇳",
-    voices: [
-      { id: "te-IN-Standard-B", label: "Suresh (సురేష్)", gender: "male", tier: "free" },
-      { id: "te-IN-Standard-A", label: "Lakshmi (లక్ష్మి)", gender: "female", tier: "free" },
-    ],
-  },
-  {
-    code: "mr-IN",
-    label: "Marathi (मराठी)",
-    flag: "🇮🇳",
-    voices: [
-      { id: "mr-IN-Wavenet-B", label: "Aniket (अनिकेत)", gender: "male", tier: "free" },
-      { id: "mr-IN-Wavenet-A", label: "Sai (साई)", gender: "female", tier: "free" },
-      { id: "mr-IN-Wavenet-C", label: "Tanvi (तन्वी)", gender: "female", tier: "free" },
-    ],
-  },
-  {
-    code: "bn-IN",
-    label: "Bengali (বাংলা)",
-    flag: "🇮🇳",
-    voices: [
-      { id: "bn-IN-Wavenet-B", label: "Subir (সুবীর)", gender: "male", tier: "free" },
-      { id: "bn-IN-Wavenet-A", label: "Tithi (তিথি)", gender: "female", tier: "free" },
-    ],
-  },
-  {
-    code: "gu-IN",
-    label: "Gujarati (ગુજરાતી)",
-    flag: "🇮🇳",
-    voices: [
-      { id: "gu-IN-Wavenet-B", label: "Harish (હરીશ)", gender: "male", tier: "free" },
-      { id: "gu-IN-Wavenet-A", label: "Dhwani (ધ્વનિ)", gender: "female", tier: "free" },
-    ],
-  },
-  {
-    code: "kn-IN",
-    label: "Kannada (ಕನ್ನಡ)",
-    flag: "🇮🇳",
-    voices: [
-      { id: "kn-IN-Wavenet-B", label: "Praveen (ಪ್ರವೀಣ್)", gender: "male", tier: "free" },
-      { id: "kn-IN-Wavenet-A", label: "Kavya (ಕಾವ್ಯ)", gender: "female", tier: "free" },
-    ],
-  },
-  {
-    code: "ml-IN",
-    label: "Malayalam (മലയാളം)",
-    flag: "🇮🇳",
-    voices: [
-      { id: "ml-IN-Wavenet-B", label: "Madhav (മാധവ്)", gender: "male", tier: "free" },
-      { id: "ml-IN-Wavenet-A", label: "Anju (അഞ്ജു)", gender: "female", tier: "free" },
-    ],
-  },
-  {
-    code: "pa-IN",
-    label: "Punjabi (ਪੰਜਾਬੀ)",
-    flag: "🇮🇳",
-    voices: [
-      { id: "pa-IN-Wavenet-B", label: "Gurpreet (ਗੁਰਪ੍ਰੀਤ)", gender: "male", tier: "free" },
-      { id: "pa-IN-Wavenet-A", label: "Simran (ਸਿਮਰਨ)", gender: "female", tier: "free" },
-    ],
-  },
-  {
-    code: "en-US",
-    label: "English (US)",
-    flag: "🇺🇸",
-    voices: [
-      { id: "en-US-Neural2-J", label: "Michael (Professional)", gender: "male", tier: "paid" },
-      { id: "en-US-Neural2-F", label: "Sarah (Warm & Natural)", gender: "female", tier: "paid" },
-      { id: "en-US-Wavenet-D", label: "David (Commercial)", gender: "male", tier: "free" },
-      { id: "en-US-Wavenet-C", label: "Emily (Casual & Friendly)", gender: "female", tier: "free" },
-    ],
-  },
-  {
-    code: "en-GB",
-    label: "English (UK)",
-    flag: "🇬🇧",
-    voices: [
-      { id: "en-GB-Neural2-B", label: "Oliver (Narrator)", gender: "male", tier: "paid" },
-      { id: "en-GB-Neural2-A", label: "Charlotte (BBC Style)", gender: "female", tier: "paid" },
-    ],
-  },
-];
-
-export interface VoicePreset {
-  id: string;
-  name: string;
-  lang: string;
-  langLabel: string;
-  langFlag: string;
-  voice: string;
-  voiceLabel: string;
-  gender: "male" | "female";
-  speed: number;
-  pitch: number;
-  volume: number;
-  style: string;
-  naturalPauses: boolean;
-  outputFormat: "mp3" | "wav" | "ogg";
-  isCustom?: boolean;
-}
-
-export const DEFAULT_PRESETS: VoicePreset[] = [
-  {
-    id: "preset-hindi-story",
-    name: "Hindi Story & Audiobook",
-    lang: "hi-IN",
-    langLabel: "Hindi (हिन्दी)",
-    langFlag: "🇮🇳",
-    voice: "hi-IN-Wavenet-A",
-    voiceLabel: "Aditi (अदिति)",
-    gender: "female",
-    speed: 0.9,
-    pitch: 0,
-    volume: 100,
-    style: "story",
-    naturalPauses: true,
-    outputFormat: "mp3",
-    isCustom: false,
-  },
-  {
-    id: "preset-hindi-yt",
-    name: "YouTube Tech Explainer",
-    lang: "hi-IN",
-    langLabel: "Hindi (हिन्दी)",
-    langFlag: "🇮🇳",
-    voice: "hi-IN-Wavenet-B",
-    voiceLabel: "Arjun (अर्जुन)",
-    gender: "male",
-    speed: 1.2,
-    pitch: 0,
-    volume: 100,
-    style: "youtube",
-    naturalPauses: true,
-    outputFormat: "mp3",
-    isCustom: false,
-  },
-  {
-    id: "preset-news-anchor",
-    name: "Indian English News Anchor",
-    lang: "en-IN",
-    langLabel: "Indian English",
-    langFlag: "🇮🇳",
-    voice: "en-IN-Wavenet-B",
-    voiceLabel: "Dev (Corporate & News)",
-    gender: "male",
-    speed: 1.1,
-    pitch: 0,
-    volume: 100,
-    style: "news",
-    naturalPauses: true,
-    outputFormat: "mp3",
-    isCustom: false,
-  },
-  {
-    id: "preset-calm-female",
-    name: "Smooth Dialogue & Podcast",
-    lang: "en-IN",
-    langLabel: "Indian English",
-    langFlag: "🇮🇳",
-    voice: "en-IN-Wavenet-A",
-    voiceLabel: "Isha (Natural & Smooth)",
-    gender: "female",
-    speed: 1.0,
-    pitch: 0,
-    volume: 100,
-    style: "normal",
-    naturalPauses: true,
-    outputFormat: "mp3",
-    isCustom: false,
-  },
-];
-
 export default function VoiceControls({
   lang,
   voice,
   speed,
+  pitch: pitchProp,
   onLangChange,
   onVoiceChange,
   onSpeedChange,
+  onPitchChange,
   isAuthenticated,
   onApplyTemplate,
   className = "",
@@ -280,40 +79,88 @@ export default function VoiceControls({
 
   const isUserLoggedIn = isAuthenticated !== undefined ? isAuthenticated : !!user;
 
-  const [selectedGender, setSelectedGender] = useState<"male" | "female">("male");
-  const [selectedStyle, setSelectedStyle] = useState<string>("normal");
+  const [selectedGender, setSelectedGender] = useState<"male" | "female">(
+    AUDIO_CONTROL_SETTINGS.defaultGender
+  );
+  const [selectedStyle, setSelectedStyle] = useState<string>(
+    AUDIO_CONTROL_SETTINGS.defaultStyle
+  );
   const [showAllVoices, setShowAllVoices] = useState(false);
-  const [isPlayingSample, setIsPlayingSample] = useState(false);
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const [loadingVoiceId, setLoadingVoiceId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // ── Gender filter ("all" | "male" | "female") & Person Dropdown state ──
+  // ── Gender filter ("all" | "male" | "female") & Person/Language Dropdown state ──
   const [genderFilter, setGenderFilter] = useState<"all" | "male" | "female">("all");
   const [personDropdownOpen, setPersonDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  // Close person dropdown on click outside
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const [langSearch, setLangSearch] = useState("");
+  const langDropdownRef = useRef<HTMLDivElement | null>(null);
+  const langSearchInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Close dropdowns on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setPersonDropdownOpen(false);
+      }
+      if (langDropdownRef.current && !langDropdownRef.current.contains(e.target as Node)) {
+        setLangDropdownOpen(false);
+        setLangSearch("");
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ── Audio Settings State ──
-  const [pitch, setPitch] = useState<number>(0); // -5 to +5 semitones
-  const [volume, setVolume] = useState<number>(100); // 50 to 150 %
-  const [outputFormat, setOutputFormat] = useState<"mp3" | "wav" | "ogg">("mp3");
-  const [sampleRate, setSampleRate] = useState<string>("44.1 kHz");
-  const [naturalPauses, setNaturalPauses] = useState<boolean>(true);
-  const [autoPlayAudio, setAutoPlayAudio] = useState<boolean>(true);
+  // ── Audio Settings State (defaults from `config/control.ts`) ──
+  const [internalPitch, setInternalPitch] = useState<number>(AUDIO_CONTROL_SETTINGS.pitch.default);
+  const pitch = pitchProp !== undefined ? pitchProp : internalPitch;
+  const setPitch = (val: number) => {
+    setInternalPitch(val);
+    onPitchChange?.(val);
+  };
+  const [volume, setVolume] = useState<number>(AUDIO_CONTROL_SETTINGS.volume.default);
+  const [outputFormat, setOutputFormat] = useState<AudioOutputFormat>(
+    AUDIO_CONTROL_SETTINGS.defaultOutputFormat
+  );
+  const [sampleRate, setSampleRate] = useState<string>(AUDIO_CONTROL_SETTINGS.defaultSampleRate);
+  const [naturalPauses, setNaturalPauses] = useState<boolean>(
+    AUDIO_CONTROL_SETTINGS.defaultNaturalPauses
+  );
+  const [autoPlayAudio, setAutoPlayAudio] = useState<boolean>(
+    AUDIO_CONTROL_SETTINGS.defaultAutoPlay
+  );
 
   // Find active language and voice list
   const currentLangObj =
     ALL_LANGUAGES_CATALOG.find((l) => l.code === lang) ||
     ALL_LANGUAGES_CATALOG[0];
+
+  const normalizedLangQuery = langSearch.trim().toLowerCase();
+  const filteredLanguages = ALL_LANGUAGES_CATALOG.filter((l) => {
+    if (!normalizedLangQuery) return true;
+    return (
+      l.label.toLowerCase().includes(normalizedLangQuery) ||
+      l.code.toLowerCase().includes(normalizedLangQuery) ||
+      l.voices.some((v) => v.label.toLowerCase().includes(normalizedLangQuery))
+    );
+  });
+
+  const handleSelectLangItem = (selected: Language) => {
+    onLangChange(selected.code);
+    if (selected.voices.length > 0) {
+      const sameGender =
+        selected.voices.find((v) => v.gender === selectedGender && v.tier !== "paid") ||
+        selected.voices.find((v) => v.gender === selectedGender);
+      onVoiceChange(sameGender ? sameGender.id : selected.voices[0].id);
+    }
+    setLangSearch("");
+    setLangDropdownOpen(false);
+    setShowAllVoices(false);
+  };
 
   const activeVoices = currentLangObj.voices;
 
@@ -324,6 +171,17 @@ export default function VoiceControls({
     return true;
   });
 
+  // Show only default 3 voices unless expanded ("person only default 3 hi show kro")
+  const defaultVoiceLimit = AUDIO_CONTROL_SETTINGS.defaultVisibleVoices;
+  const hasMoreVoices = filteredVoices.length > defaultVoiceLimit;
+  const visibleVoices = (() => {
+    if (showAllVoices || !hasMoreVoices) return filteredVoices;
+    const topThree = filteredVoices.slice(0, defaultVoiceLimit);
+    if (topThree.some((v) => v.id === voice)) return topThree;
+    const activeMatch = filteredVoices.find((v) => v.id === voice);
+    return activeMatch ? [...topThree.slice(0, defaultVoiceLimit - 1), activeMatch] : topThree;
+  })();
+
   const getPersonNumber = (voiceId: string) => {
     const idx = activeVoices.findIndex((v) => v.id === voiceId);
     return idx >= 0 ? idx + 1 : 1;
@@ -333,45 +191,156 @@ export default function VoiceControls({
     activeVoices.find((v) => v.id === voice) || activeVoices[0];
   const currentPersonNum = getPersonNumber(currentVoiceObj.id);
 
-  // Sync selected gender from current voice on mount or change
+  const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
+  const sampleObjectUrlRef = useRef<string | null>(null);
+  const sampleAbortRef = useRef<AbortController | null>(null);
+
+  const stopVoiceSample = () => {
+    if (sampleAbortRef.current) {
+      sampleAbortRef.current.abort();
+      sampleAbortRef.current = null;
+    }
+    if (sampleAudioRef.current) {
+      sampleAudioRef.current.pause();
+      sampleAudioRef.current = null;
+    }
+    if (sampleObjectUrlRef.current) {
+      URL.revokeObjectURL(sampleObjectUrlRef.current);
+      sampleObjectUrlRef.current = null;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setLoadingVoiceId(null);
+    setPlayingVoiceId(null);
+  };
+
+  // Sync selected gender from current voice
   useEffect(() => {
     const matched = activeVoices.find((v) => v.id === voice);
     if (matched) {
       setSelectedGender(matched.gender as "male" | "female");
     }
-  }, [voice, activeVoices]);
+  }, [voice, lang]);
+
+  // Stop any playing sample when language changes or component unmounts
+  useEffect(() => {
+    stopVoiceSample();
+    return () => {
+      stopVoiceSample();
+    };
+  }, [lang]);
 
   const handleGenderSelect = (gender: "male" | "female") => {
     setSelectedGender(gender);
+    const currentMatches = activeVoices.find((v) => v.id === voice && v.gender === gender);
+    if (currentMatches) return;
     const matchedVoice =
-      activeVoices.find((v) => v.gender === gender) || activeVoices[0];
+      activeVoices.find((v) => v.gender === gender && v.tier !== "paid") ||
+      activeVoices.find((v) => v.gender === gender) ||
+      activeVoices[0];
     if (matchedVoice) {
       onVoiceChange(matchedVoice.id);
     }
   };
 
-  const handleTestVoiceSample = () => {
+  const handlePlayVoicePreview = async (targetVoice: Voice) => {
     if (typeof window === "undefined") return;
 
-    setIsPlayingSample(true);
+    // Clicking play on the voice currently playing/loading stops it
+    if (playingVoiceId === targetVoice.id || loadingVoiceId === targetVoice.id) {
+      stopVoiceSample();
+      return;
+    }
 
+    stopVoiceSample();
+    setLoadingVoiceId(targetVoice.id);
+
+    const activeGender = (targetVoice.gender as "male" | "female") || selectedGender;
+    const controller = new AbortController();
+    sampleAbortRef.current = controller;
+
+    try {
+      const res = await fetch("/api/voices/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lang,
+          voice: targetVoice.id,
+          speed,
+          pitch,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        setLoadingVoiceId(null);
+        setPlayingVoiceId(targetVoice.id);
+        fallbackBrowserPreview(activeGender);
+        return;
+      }
+
+      const blob = await res.blob();
+      if (controller.signal.aborted) return;
+
+      const objectUrl = URL.createObjectURL(blob);
+      sampleObjectUrlRef.current = objectUrl;
+
+      const audio = new Audio(objectUrl);
+      audio.volume = Math.max(0.1, Math.min(1.0, volume / 100));
+      sampleAudioRef.current = audio;
+
+      setLoadingVoiceId(null);
+      setPlayingVoiceId(targetVoice.id);
+
+      audio.onended = () => {
+        stopVoiceSample();
+      };
+      audio.onerror = () => {
+        stopVoiceSample();
+        setPlayingVoiceId(targetVoice.id);
+        fallbackBrowserPreview(activeGender);
+      };
+
+      await audio.play();
+    } catch (err: any) {
+      if (err?.name === "AbortError") return;
+      setLoadingVoiceId(null);
+      setPlayingVoiceId(targetVoice.id);
+      fallbackBrowserPreview(activeGender);
+    }
+  };
+
+  const fallbackBrowserPreview = (gender: "male" | "female") => {
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
       const sampleText = lang.startsWith("hi")
-        ? selectedGender === "female"
+        ? gender === "female"
           ? "नमस्ते! यह मेरी स्वाभाविक आवाज़ का टेस्ट सैंपल है।"
           : "नमस्ते! यह मेरी पुरुष आवाज़ का टेस्ट सैंपल है।"
         : "Hello! This is a test preview of my natural AI voice.";
 
       const utter = new SpeechSynthesisUtterance(sampleText);
+      const voices = window.speechSynthesis.getVoices();
+      const langVoices = voices.filter((v) =>
+        v.lang.toLowerCase().startsWith(lang.split("-")[0].toLowerCase())
+      );
+      const genderHint =
+        gender === "female"
+          ? /female|swara|heera|kalpana|zira|samantha|victoria|aditi/i
+          : /male|madhur|ravi|hemant|david|mark|alex|daniel|arjun/i;
+      const picked = langVoices.find((v) => genderHint.test(v.name)) || langVoices[0];
+      if (picked) utter.voice = picked;
+
       utter.rate = speed;
-      utter.pitch = Math.max(0.5, Math.min(2.0, 1 + pitch * 0.1));
+      const genderBasePitch = gender === "female" ? 1.18 : 0.82;
+      utter.pitch = Math.max(0.5, Math.min(2.0, genderBasePitch + pitch * 0.08));
       utter.lang = lang;
-      utter.onend = () => setIsPlayingSample(false);
-      utter.onerror = () => setIsPlayingSample(false);
+      utter.onend = () => setPlayingVoiceId(null);
+      utter.onerror = () => setPlayingVoiceId(null);
       window.speechSynthesis.speak(utter);
     } else {
-      setTimeout(() => setIsPlayingSample(false), 2000);
+      setTimeout(() => setPlayingVoiceId(null), 2000);
     }
   };
 
@@ -380,24 +349,43 @@ export default function VoiceControls({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // ── Voice Presets / Templates State ──
+  // ── Voice Presets / Templates & Favorite Voices State ──
   const [presets, setPresets] = useState<VoicePreset[]>(DEFAULT_PRESETS);
+  const [favoriteVoices, setFavoriteVoices] = useState<FavoriteVoiceItem[]>([]);
   const [presetNameInput, setPresetNameInput] = useState("");
 
-  // Load custom saved templates from localStorage on mount
+  // Load custom saved templates, favorites & user preferences from localStorage on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const saved = localStorage.getItem("tts_voice_presets_v2");
+      const saved = localStorage.getItem(PRESETS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setPresets(parsed);
         }
       }
+      setFavoriteVoices(getFavoriteVoices());
+
+      const prefs = getUserPreferences();
+      const params = new URLSearchParams(window.location.search);
+      const urlStyle = params.get("style");
+      if (urlStyle) {
+        setSelectedStyle(urlStyle);
+      } else if (prefs.defaultStyle) {
+        setSelectedStyle(prefs.defaultStyle);
+      }
+      if (prefs.defaultVolume) setVolume(prefs.defaultVolume);
+      if (prefs.outputFormat) setOutputFormat(prefs.outputFormat);
+      if (typeof prefs.naturalPauses === "boolean") setNaturalPauses(prefs.naturalPauses);
+      if (typeof prefs.autoPlay === "boolean") setAutoPlayAudio(prefs.autoPlay);
     } catch (e) {
       console.error("Failed to load saved templates", e);
     }
+
+    const syncFavorites = () => setFavoriteVoices(getFavoriteVoices());
+    window.addEventListener("tts-saved-voices-updated", syncFavorites);
+    return () => window.removeEventListener("tts-saved-voices-updated", syncFavorites);
   }, []);
 
   const openSaveTemplateFlow = () => {
@@ -454,7 +442,7 @@ export default function VoiceControls({
     setPresets(updated);
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem("tts_voice_presets_v2", JSON.stringify(updated));
+        localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(updated));
       } catch (err) {
         console.error("Failed to save template to localStorage", err);
       }
@@ -472,7 +460,7 @@ export default function VoiceControls({
     onSpeedChange(tpl.speed);
     setPitch(tpl.pitch ?? 0);
     setVolume(tpl.volume ?? 100);
-    setSelectedStyle(tpl.style || "normal");
+    setSelectedStyle(tpl.style === "story" ? "storytelling" : tpl.style || "normal");
     setNaturalPauses(tpl.naturalPauses ?? true);
     setOutputFormat(tpl.outputFormat || "mp3");
 
@@ -485,7 +473,7 @@ export default function VoiceControls({
     setPresets(updated);
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem("tts_voice_presets_v2", JSON.stringify(updated));
+        localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(updated));
       } catch (err) {
         console.error("Failed to delete template", err);
       }
@@ -493,12 +481,7 @@ export default function VoiceControls({
     showToast(`Template "${name}" removed`);
   };
 
-  const styleModes = [
-    { id: "normal", label: "Normal", icon: "📊" },
-    { id: "story", label: "Story", icon: "📖" },
-    { id: "news", label: "News", icon: "📰" },
-    { id: "youtube", label: "YouTube", icon: "▶️" },
-  ];
+  const styleModes = SPEAKING_STYLE_MODES;
 
   return (
     <aside className={`w-full lg:w-[350px] xl:w-[380px] shrink-0 font-sans ${className}`}>
@@ -613,42 +596,188 @@ export default function VoiceControls({
         {/* ═══════════════════════════════════════════════════════════════ */}
         {activeTab === "voice" && (
           <div className="space-y-5 animate-fadeIn">
-            {/* 1. Select Language */}
-            <div>
-              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200 mb-2">
-                <span className="flex size-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 text-[11px] font-bold">
-                  🌐
-                </span>
-                <span>1. Select Language</span>
-              </div>
-
-              <div className="relative">
-                <select
-                  value={lang}
-                  onChange={(e) => {
-                    const newLang = e.target.value;
-                    onLangChange(newLang);
-                    const langMatch = ALL_LANGUAGES_CATALOG.find((l) => l.code === newLang);
-                    if (langMatch && langMatch.voices.length > 0) {
-                      const sameGender = langMatch.voices.find((v) => v.gender === selectedGender);
-                      onVoiceChange(sameGender ? sameGender.id : langMatch.voices[0].id);
-                    }
-                  }}
-                  className="w-full appearance-none rounded-xl border border-slate-200/90 dark:border-zinc-800 bg-slate-50/80 dark:bg-zinc-900/60 px-3.5 py-2.5 pr-10 text-xs sm:text-sm font-bold text-slate-900 dark:text-white hover:border-orange-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition cursor-pointer"
-                >
-                  {ALL_LANGUAGES_CATALOG.map((l) => (
-                    <option key={l.code} value={l.code}>
-                      {l.flag} {l.label}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
-                  <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                  </svg>
+            {/* 1. Select Language (Dropdown with Search Bar Inside) */}
+            <div ref={langDropdownRef} className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200">
+                  <span className="flex size-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 text-[11px] font-bold">
+                    🌐
+                  </span>
+                  <span>1. Select Language</span>
                 </div>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500">
+                  {ALL_LANGUAGES_CATALOG.length} Languages
+                </span>
               </div>
+
+              {/* Selected Language Dropdown Trigger */}
+              <button
+                type="button"
+                onClick={() => {
+                  const nextOpen = !langDropdownOpen;
+                  setLangDropdownOpen(nextOpen);
+                  if (nextOpen) {
+                    setTimeout(() => langSearchInputRef.current?.focus(), 0);
+                  } else {
+                    setLangSearch("");
+                  }
+                }}
+                aria-expanded={langDropdownOpen}
+                className={`w-full flex items-center justify-between rounded-xl border bg-slate-50/80 dark:bg-zinc-900/60 px-3.5 py-2.5 text-left transition cursor-pointer ${
+                  langDropdownOpen
+                    ? "border-orange-500 ring-2 ring-orange-500/20"
+                    : "border-slate-200/90 dark:border-zinc-800 hover:border-orange-400"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-base leading-none shrink-0">{currentLangObj.flag}</span>
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                    {currentLangObj.label}
+                  </span>
+                </div>
+
+                <svg
+                  className={`size-4 text-slate-400 shrink-0 transition-transform duration-200 ${
+                    langDropdownOpen ? "rotate-180 text-orange-500" : ""
+                  }`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Dropdown Menu with Search Bar Inside */}
+              {langDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 z-40 rounded-2xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2.5 shadow-xl shadow-slate-900/15 dark:shadow-black/60 animate-fadeIn">
+                  {/* Search Bar Inside Dropdown */}
+                  <div className="relative flex items-center mb-2">
+                    <svg
+                      className="pointer-events-none absolute left-3 size-3.5 text-slate-400 dark:text-zinc-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2.2"
+                        d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                    <input
+                      ref={langSearchInputRef}
+                      type="text"
+                      value={langSearch}
+                      onChange={(e) => setLangSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (filteredLanguages.length > 0) {
+                            handleSelectLangItem(filteredLanguages[0]);
+                          }
+                        } else if (e.key === "Escape") {
+                          setLangDropdownOpen(false);
+                          setLangSearch("");
+                        }
+                      }}
+                      placeholder="Search language (Hindi, Tamil, English...)"
+                      aria-label="Search language"
+                      className="w-full rounded-xl border border-slate-200/90 dark:border-zinc-700/80 bg-slate-50 dark:bg-zinc-800/80 pl-8 pr-8 py-2 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:border-orange-500 focus:bg-white dark:focus:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition"
+                    />
+                    {langSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLangSearch("");
+                          langSearchInputRef.current?.focus();
+                        }}
+                        title="Clear search"
+                        className="absolute right-2.5 flex size-4.5 items-center justify-center rounded-full bg-slate-200/80 dark:bg-zinc-700 text-[10px] font-bold text-slate-600 dark:text-zinc-300 hover:bg-orange-500 hover:text-white transition cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between px-1.5 pb-1.5 mb-1 border-b border-slate-100 dark:border-zinc-800">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                      {normalizedLangQuery
+                        ? `Matching (${filteredLanguages.length})`
+                        : `All Languages (${filteredLanguages.length})`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLangDropdownOpen(false);
+                        setLangSearch("");
+                      }}
+                      className="text-[10px] font-bold text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition cursor-pointer"
+                    >
+                      Close ✕
+                    </button>
+                  </div>
+
+                  {filteredLanguages.length > 0 ? (
+                    <div className="max-h-56 overflow-y-auto space-y-1 pr-0.5">
+                      {filteredLanguages.map((l) => {
+                        const isSelected = l.code === lang;
+                        return (
+                          <button
+                            key={l.code}
+                            type="button"
+                            onClick={() => handleSelectLangItem(l)}
+                            className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-left transition cursor-pointer border ${
+                              isSelected
+                                ? "border-orange-500 bg-orange-50/80 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 font-bold shadow-xs"
+                                : "border-transparent hover:bg-slate-50 dark:hover:bg-zinc-800/80 text-slate-800 dark:text-zinc-200"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="text-base leading-none shrink-0">{l.flag}</span>
+                              <div className="truncate">
+                                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                  {l.label}
+                                </div>
+                                <div className="text-[10px] text-slate-400 dark:text-zinc-500">
+                                  {l.code} • {l.voices.length} {l.voices.length === 1 ? "voice" : "voices"}
+                                </div>
+                              </div>
+                            </div>
+
+                            {isSelected ? (
+                              <span className="size-5 flex items-center justify-center rounded-full bg-orange-500 text-white text-xs font-black shrink-0 shadow-xs">
+                                ✓
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-semibold text-slate-400 dark:text-zinc-500 shrink-0">
+                                Select
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-5 px-3 text-center space-y-2">
+                      <p className="text-xs font-bold text-slate-500 dark:text-zinc-400">
+                        No language found for &ldquo;{langSearch}&rdquo;
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLangSearch("");
+                          langSearchInputRef.current?.focus();
+                        }}
+                        className="text-[11px] font-bold text-orange-600 dark:text-orange-400 hover:underline cursor-pointer"
+                      >
+                        Show all languages
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* 2. Select Voice Avatar & Person */}
@@ -735,50 +864,97 @@ export default function VoiceControls({
                 </button>
               </div>
 
-              {/* Open & Scrollable Voice Persons Box ("thoda sa space deke open kr do vo scroleble ho jaye") */}
+              {/* Voice Persons Box (Default 3 shown, expandable if more) */}
               <div className="mt-3 rounded-2xl border border-slate-200/90 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/50 p-2.5 shadow-xs">
                 <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-200/60 dark:border-zinc-800/80 mb-2">
                   <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">
-                    Voice Persons ({filteredVoices.length})
+                    Voice Persons ({visibleVoices.length}
+                    {hasMoreVoices && !showAllVoices ? `/${filteredVoices.length}` : ""})
                   </span>
-                  <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 flex items-center gap-1">
-                    <span>Scroll voices</span>
-                    <span>↓</span>
-                  </span>
+                  {hasMoreVoices ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllVoices((prev) => !prev)}
+                      className="text-[10px] font-bold text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>{showAllVoices ? "Show 3 default" : `View all (${filteredVoices.length})`}</span>
+                      <span>{showAllVoices ? "↑" : "↓"}</span>
+                    </button>
+                  ) : (
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500">
+                      Default
+                    </span>
+                  )}
                 </div>
 
-                {/* Scrollable list with comfortable height and spacing */}
-                <div className="max-h-[175px] overflow-y-auto space-y-1.5 pr-1">
-                  {filteredVoices.map((v) => {
+                {/* Default 3 voice persons (scrollable when expanded) */}
+                <div
+                  className={`space-y-1.5 pt-1 pl-1 pr-1 ${
+                    showAllVoices ? "max-h-[210px] overflow-y-auto" : ""
+                  }`}
+                >
+                  {visibleVoices.map((v) => {
                     const pNum = getPersonNumber(v.id);
                     const isSelected = v.id === voice;
+                    const isPlayingThis = playingVoiceId === v.id;
+                    const isLoadingThis = loadingVoiceId === v.id;
+
                     return (
-                      <button
+                      <div
                         key={v.id}
-                        type="button"
+                        role="button"
+                        tabIndex={0}
                         onClick={() => {
                           onVoiceChange(v.id);
                           setSelectedGender(v.gender as "male" | "female");
                         }}
-                        className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-left transition-all cursor-pointer border ${
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onVoiceChange(v.id);
+                            setSelectedGender(v.gender as "male" | "female");
+                          }
+                        }}
+                        className={`w-full flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left transition-all cursor-pointer border ${
                           isSelected
                             ? "border-orange-500 bg-white dark:bg-zinc-800 text-orange-600 dark:text-orange-400 font-bold shadow-xs ring-1 ring-orange-500/20"
                             : "border-transparent bg-white/70 dark:bg-zinc-800/40 hover:bg-white dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 hover:border-slate-200 dark:hover:border-zinc-700"
                         }`}
                       >
+                        {/* Left Side: Male/Female Avatar with Selection Tick on top-left + Voice Info */}
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="relative size-8 shrink-0 overflow-hidden rounded-xl border border-slate-200 dark:border-zinc-700 shadow-xs">
-                            <Image
-                              src={
-                                v.gender === "female"
-                                  ? "/images/female-avatar.jpg"
-                                  : "/images/male-avatar.jpg"
-                              }
-                              alt={v.label}
-                              fill
-                              className="object-cover"
-                              sizes="32px"
-                            />
+                          <div className="relative size-8.5 shrink-0">
+                            <div
+                              className={`relative size-8.5 overflow-hidden rounded-xl border transition-all shadow-xs ${
+                                isSelected
+                                  ? "border-orange-500 ring-2 ring-orange-500/20"
+                                  : "border-slate-200 dark:border-zinc-700"
+                              }`}
+                            >
+                              <Image
+                                src={
+                                  v.gender === "female"
+                                    ? "/images/female-avatar.jpg"
+                                    : "/images/male-avatar.jpg"
+                                }
+                                alt={v.label}
+                                fill
+                                className="object-cover"
+                                sizes="34px"
+                              />
+                            </div>
+
+                            {/* Selection Tick on Male/Female Avatar (Left Side) */}
+                            <span
+                              className={`absolute -top-1 -left-1 z-10 flex size-4 items-center justify-center rounded-full text-[9px] font-black shadow-xs transition-all ${
+                                isSelected
+                                  ? "bg-orange-500 text-white ring-2 ring-white dark:ring-zinc-800"
+                                  : "bg-white/95 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 text-transparent"
+                              }`}
+                              aria-hidden="true"
+                            >
+                              ✓
+                            </span>
                           </div>
 
                           <div className="truncate">
@@ -802,19 +978,58 @@ export default function VoiceControls({
                           </div>
                         </div>
 
-                        {isSelected ? (
-                          <span className="size-5 flex items-center justify-center rounded-full bg-orange-500 text-white text-xs font-black shrink-0 shadow-xs">
-                            ✓
-                          </span>
-                        ) : (
-                          <span className="size-5 flex items-center justify-center rounded-full border border-slate-200 dark:border-zinc-700 text-slate-300 dark:text-zinc-600 text-xs shrink-0">
-                            ○
-                          </span>
-                        )}
-                      </button>
+                        {/* Right Side: Per-Voice Play / Stop Sample Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePlayVoicePreview(v);
+                          }}
+                          title={
+                            isPlayingThis || isLoadingThis
+                              ? `Stop ${v.label.split(" ")[0]} sample`
+                              : `Play ${v.label.split(" ")[0]} voice sample`
+                          }
+                          aria-label={
+                            isPlayingThis || isLoadingThis
+                              ? `Stop ${v.label} sample`
+                              : `Play ${v.label} sample`
+                          }
+                          className={`flex size-7.5 shrink-0 items-center justify-center rounded-full border transition-all cursor-pointer ${
+                            isPlayingThis || isLoadingThis
+                              ? "border-orange-500 bg-orange-500 text-white shadow-sm ring-2 ring-orange-500/25"
+                              : "border-orange-200/90 dark:border-orange-800/60 bg-orange-50/80 dark:bg-orange-950/40 text-[#ff5500] dark:text-orange-400 hover:bg-orange-500 hover:border-orange-500 hover:text-white shadow-2xs"
+                          }`}
+                        >
+                          {isLoadingThis ? (
+                            <span className="size-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                          ) : isPlayingThis ? (
+                            <svg className="size-3.5" fill="currentColor" viewBox="0 0 24 24">
+                              <rect x="6" y="5" width="4" height="14" rx="1" />
+                              <rect x="14" y="5" width="4" height="14" rx="1" />
+                            </svg>
+                          ) : (
+                            <svg className="size-3.5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                              <polygon points="6 4 20 12 6 20 6 4" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
+
+                {hasMoreVoices && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllVoices((prev) => !prev)}
+                    className="mt-2 w-full rounded-xl border border-slate-200/80 dark:border-zinc-800 bg-white/80 dark:bg-zinc-800/60 hover:border-orange-400 py-1.5 text-[11px] font-bold text-slate-600 dark:text-zinc-300 hover:text-orange-600 dark:hover:text-orange-400 transition cursor-pointer"
+                  >
+                    {showAllVoices
+                      ? "Show Less (Default 3) ▴"
+                      : `Show More Voices (+${filteredVoices.length - defaultVoiceLimit}) ▾`}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -834,42 +1049,62 @@ export default function VoiceControls({
                     <button
                       key={m.id}
                       type="button"
-                      onClick={() => setSelectedStyle(m.id)}
-                      className={`flex items-center gap-2 rounded-xl border p-2.5 text-xs font-bold transition cursor-pointer ${
+                      onClick={() => {
+                        setSelectedStyle(m.id);
+                        if (m.id !== "other") {
+                          onSpeedChange(m.speed);
+                          setPitch(m.pitch);
+                        }
+                      }}
+                      className={`flex items-center gap-2 rounded-xl border py-2 px-2.5 text-xs font-bold transition cursor-pointer ${
                         active
                           ? "border-orange-500 bg-orange-50/70 dark:bg-orange-950/30 text-[#ff5500] dark:text-orange-400 shadow-xs"
                           : "border-slate-200/80 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/30 text-slate-700 dark:text-zinc-300 hover:border-orange-300"
                       }`}
                     >
-                      <span>{m.icon}</span>
-                      <span>{m.label}</span>
+                      <span className="shrink-0">{m.icon}</span>
+                      <span className="truncate">{m.label}</span>
                     </button>
                   );
                 })}
               </div>
+
+              {/* Inline Custom Controls when "Other" Speaking Style is selected */}
+              {selectedStyle === "other" && (
+                <div className="mt-2.5 rounded-xl border border-orange-200/80 dark:border-orange-900/50 bg-orange-50/40 dark:bg-zinc-900/70 p-2.5 space-y-2 animate-fadeIn">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-zinc-300">
+                    <span>Custom Speed</span>
+                    <span className="text-orange-600 dark:text-orange-400">{speed.toFixed(1)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={AUDIO_CONTROL_SETTINGS.speed.min}
+                    max={AUDIO_CONTROL_SETTINGS.speed.max}
+                    step={AUDIO_CONTROL_SETTINGS.speed.step}
+                    value={speed}
+                    onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
+                    className="w-full accent-[#ff5500] h-1.5 bg-slate-200 dark:bg-zinc-800 rounded-lg cursor-pointer"
+                  />
+
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-zinc-300 pt-1">
+                    <span>Custom Pitch</span>
+                    <span className="text-purple-600 dark:text-purple-400">
+                      {pitch > 0 ? `+${pitch}` : pitch} st
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={AUDIO_CONTROL_SETTINGS.pitch.min}
+                    max={AUDIO_CONTROL_SETTINGS.pitch.max}
+                    step={AUDIO_CONTROL_SETTINGS.pitch.step}
+                    value={pitch}
+                    onChange={(e) => setPitch(parseInt(e.target.value, 10))}
+                    className="w-full accent-purple-600 h-1.5 bg-slate-200 dark:bg-zinc-800 rounded-lg cursor-pointer"
+                  />
+                </div>
+              )}
             </div>
 
-            {/* 4. Test Voice Sample Button */}
-            <div>
-              <button
-                type="button"
-                onClick={handleTestVoiceSample}
-                disabled={isPlayingSample}
-                className="w-full flex items-center justify-center gap-2 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 py-3 text-xs sm:text-sm font-extrabold text-slate-800 dark:text-zinc-200 transition cursor-pointer shadow-xs disabled:opacity-50"
-              >
-                {isPlayingSample ? (
-                  <>
-                    <span className="size-2 rounded-full bg-orange-500 animate-ping" />
-                    <span>Playing Voice Sample...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-xs">▶</span>
-                    <span>Test Voice Sample</span>
-                  </>
-                )}
-              </button>
-            </div>
             {/* Quick Action: Save as Template */}
             <div className="pt-2 border-t border-slate-100 dark:border-zinc-800/80">
               <button
@@ -909,18 +1144,18 @@ export default function VoiceControls({
 
               <input
                 type="range"
-                min={0.5}
-                max={2.0}
-                step={0.1}
+                min={AUDIO_CONTROL_SETTINGS.speed.min}
+                max={AUDIO_CONTROL_SETTINGS.speed.max}
+                step={AUDIO_CONTROL_SETTINGS.speed.step}
                 value={speed}
                 onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
                 className="w-full accent-[#ff5500] h-2 bg-slate-200 dark:bg-zinc-800 rounded-lg cursor-pointer"
               />
 
               <div className="flex justify-between text-[10px] text-slate-400 dark:text-zinc-500 font-semibold mt-1">
-                <span>0.5x Slow</span>
-                <span>1.0x Normal</span>
-                <span>2.0x Fast</span>
+                <span>{AUDIO_CONTROL_SETTINGS.speed.min}x Slow</span>
+                <span>{AUDIO_CONTROL_SETTINGS.speed.default.toFixed(1)}x Normal</span>
+                <span>{AUDIO_CONTROL_SETTINGS.speed.max.toFixed(1)}x Fast</span>
               </div>
             </div>
 
@@ -940,18 +1175,18 @@ export default function VoiceControls({
 
               <input
                 type="range"
-                min={-5}
-                max={5}
-                step={1}
+                min={AUDIO_CONTROL_SETTINGS.pitch.min}
+                max={AUDIO_CONTROL_SETTINGS.pitch.max}
+                step={AUDIO_CONTROL_SETTINGS.pitch.step}
                 value={pitch}
                 onChange={(e) => setPitch(parseInt(e.target.value, 10))}
                 className="w-full accent-purple-600 h-2 bg-slate-200 dark:bg-zinc-800 rounded-lg cursor-pointer"
               />
 
               <div className="flex justify-between text-[10px] text-slate-400 dark:text-zinc-500 font-semibold mt-1">
-                <span>Deep (-5st)</span>
-                <span>Natural (0st)</span>
-                <span>High (+5st)</span>
+                <span>Deep ({AUDIO_CONTROL_SETTINGS.pitch.min}st)</span>
+                <span>Natural ({AUDIO_CONTROL_SETTINGS.pitch.default}st)</span>
+                <span>High (+{AUDIO_CONTROL_SETTINGS.pitch.max}st)</span>
               </div>
             </div>
 
@@ -971,18 +1206,18 @@ export default function VoiceControls({
 
               <input
                 type="range"
-                min={50}
-                max={150}
-                step={5}
+                min={AUDIO_CONTROL_SETTINGS.volume.min}
+                max={AUDIO_CONTROL_SETTINGS.volume.max}
+                step={AUDIO_CONTROL_SETTINGS.volume.step}
                 value={volume}
                 onChange={(e) => setVolume(parseInt(e.target.value, 10))}
                 className="w-full accent-emerald-600 h-2 bg-slate-200 dark:bg-zinc-800 rounded-lg cursor-pointer"
               />
 
               <div className="flex justify-between text-[10px] text-slate-400 dark:text-zinc-500 font-semibold mt-1">
-                <span>50% Soft</span>
-                <span>100% Standard</span>
-                <span>150% Boost</span>
+                <span>{AUDIO_CONTROL_SETTINGS.volume.min}% Soft</span>
+                <span>{AUDIO_CONTROL_SETTINGS.volume.default}% Standard</span>
+                <span>{AUDIO_CONTROL_SETTINGS.volume.max}% Boost</span>
               </div>
             </div>
 
@@ -996,7 +1231,7 @@ export default function VoiceControls({
               </div>
 
               <div className="grid grid-cols-3 gap-2">
-                {(["mp3", "wav", "ogg"] as const).map((fmt) => (
+                {AUDIO_CONTROL_SETTINGS.outputFormats.map((fmt) => (
                   <button
                     key={fmt}
                     type="button"
@@ -1023,7 +1258,7 @@ export default function VoiceControls({
               </div>
 
               <div className="grid grid-cols-3 gap-2">
-                {["24 kHz", "44.1 kHz", "48 kHz"].map((sr) => (
+                {AUDIO_CONTROL_SETTINGS.sampleRates.map((sr) => (
                   <button
                     key={sr}
                     type="button"
@@ -1080,13 +1315,13 @@ export default function VoiceControls({
             <button
               type="button"
               onClick={() => {
-                onSpeedChange(1.0);
-                setPitch(0);
-                setVolume(100);
-                setOutputFormat("mp3");
-                setSampleRate("44.1 kHz");
-                setNaturalPauses(true);
-                setAutoPlayAudio(true);
+                onSpeedChange(AUDIO_CONTROL_SETTINGS.speed.default);
+                setPitch(AUDIO_CONTROL_SETTINGS.pitch.default);
+                setVolume(AUDIO_CONTROL_SETTINGS.volume.default);
+                setOutputFormat(AUDIO_CONTROL_SETTINGS.defaultOutputFormat);
+                setSampleRate(AUDIO_CONTROL_SETTINGS.defaultSampleRate);
+                setNaturalPauses(AUDIO_CONTROL_SETTINGS.defaultNaturalPauses);
+                setAutoPlayAudio(AUDIO_CONTROL_SETTINGS.defaultAutoPlay);
                 showToast("Default settings restored!");
               }}
               className="w-full text-center text-xs font-semibold text-slate-500 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 pt-2 transition cursor-pointer"
@@ -1132,15 +1367,78 @@ export default function VoiceControls({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={openSaveTemplateFlow}
-                className="flex items-center gap-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-bold px-3 py-1.5 shadow-xs transition cursor-pointer shrink-0"
-              >
-                <span>💾</span>
-                <span>+ Save Current</span>
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const res = toggleFavoriteVoiceItem({
+                      voiceId: currentVoiceObj.id,
+                      voiceLabel: currentVoiceObj.label,
+                      gender: (currentVoiceObj.gender as "male" | "female") || selectedGender,
+                      langCode: currentLangObj.code,
+                      langLabel: currentLangObj.label,
+                      langFlag: currentLangObj.flag,
+                    });
+                    setFavoriteVoices(res.favorites);
+                    showToast(
+                      res.isSaved
+                        ? `★ Added ${currentVoiceObj.label.split(" ")[0]} to Saved Voices!`
+                        : `Removed from Saved Voices`
+                    );
+                  }}
+                  title="Star current voice to Favorites"
+                  className="flex items-center gap-1 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[11px] font-bold px-2.5 py-1.5 transition cursor-pointer"
+                >
+                  <span>
+                    {favoriteVoices.some((f) => f.voiceId === currentVoiceObj.id) ? "★" : "☆"}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={openSaveTemplateFlow}
+                  className="flex items-center gap-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-bold px-3 py-1.5 shadow-xs transition cursor-pointer shrink-0"
+                >
+                  <span>💾</span>
+                  <span>+ Save Current</span>
+                </button>
+              </div>
             </div>
+
+            {/* Quick Favorite Voices Strip */}
+            {favoriteVoices.length > 0 && (
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  <span>★ Favorite Voices ({favoriteVoices.length})</span>
+                  <Link href="/saved-voices" className="hover:underline">
+                    Manage →
+                  </Link>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {favoriteVoices.slice(0, 6).map((fav) => (
+                    <button
+                      key={fav.voiceId}
+                      type="button"
+                      onClick={() => {
+                        onLangChange(fav.langCode);
+                        onVoiceChange(fav.voiceId);
+                        setSelectedGender(fav.gender);
+                        showToast(`Selected ${fav.voiceLabel.split(" ")[0]}!`);
+                        setActiveTab("voice");
+                      }}
+                      className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-bold transition cursor-pointer ${
+                        voice === fav.voiceId
+                          ? "border-orange-500 bg-orange-500 text-white"
+                          : "border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-200 hover:border-orange-400"
+                      }`}
+                    >
+                      <span>{fav.langFlag}</span>
+                      <span>{fav.voiceLabel.split(" ")[0]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Compact Saved Templates List */}
             <div className="max-h-[460px] overflow-y-auto space-y-2 pr-1">
@@ -1234,7 +1532,7 @@ export default function VoiceControls({
                     onClick={() => {
                       setPresets(DEFAULT_PRESETS);
                       if (typeof window !== "undefined") {
-                        localStorage.removeItem("tts_voice_presets_v2");
+                        localStorage.removeItem(PRESETS_STORAGE_KEY);
                       }
                       showToast("Default templates restored!");
                     }}

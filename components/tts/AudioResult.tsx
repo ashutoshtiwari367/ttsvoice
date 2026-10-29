@@ -9,6 +9,11 @@ interface AudioResultProps {
   playing: boolean;
   audioUrl: string | null;
   onPlay: () => void;
+  generatedVoiceLabel?: string | null;
+  generatedVoiceGender?: string | null;
+  pendingVoiceLabel?: string | null;
+  pendingVoiceGender?: string | null;
+  onRegenerate?: () => void;
 }
 
 function formatTime(seconds: number) {
@@ -23,21 +28,32 @@ export default function AudioResult({
   playing,
   audioUrl,
   onPlay,
+  generatedVoiceLabel,
+  generatedVoiceGender,
+  pendingVoiceLabel,
+  pendingVoiceGender,
+  onRegenerate,
 }: AudioResultProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
 
-  // Keep the real <audio> element in sync with the parent's `playing` state.
+  // Reset scrubber whenever audioUrl changes so previous audio state never leaks
+  useEffect(() => {
+    setCurrent(0);
+    setDuration(0);
+  }, [audioUrl]);
+
+  // Keep the real <audio> element in sync with `playing`, `audioUrl`, and `status`.
   useEffect(() => {
     const el = audioRef.current;
-    if (!el) return;
+    if (!el || status !== "ready" || !audioUrl) return;
     if (playing) {
       el.play().catch(() => {});
     } else {
       el.pause();
     }
-  }, [playing]);
+  }, [playing, audioUrl, status]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const el = audioRef.current;
@@ -113,8 +129,9 @@ export default function AudioResult({
 
   return (
     <div className="space-y-6">
-      {/* Real audio element */}
+      {/* Real audio element keyed by URL so switching voices always loads fresh audio */}
       <audio
+        key={audioUrl}
         ref={audioRef}
         src={audioUrl}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
@@ -126,8 +143,31 @@ export default function AudioResult({
         className="hidden"
       />
 
+      {/* Prompt when user changed voice avatar after generating */}
+      {pendingVoiceLabel && onRegenerate && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-300 dark:border-orange-800/70 bg-orange-50/90 dark:bg-orange-950/40 px-4 py-3 text-xs animate-fadeIn">
+          <div className="flex items-center gap-2 font-semibold text-orange-900 dark:text-orange-200">
+            <span>🎙️</span>
+            <span>
+              Voice changed to{" "}
+              <strong>
+                {pendingVoiceLabel.split(" ")[0]} ({pendingVoiceGender === "female" ? "Female" : "Male"})
+              </strong>
+              . Regenerate to hear the new voice!
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onRegenerate}
+            className="rounded-xl bg-gradient-to-r from-[#ff5500] to-amber-500 px-3.5 py-1.5 text-xs font-extrabold text-white shadow-sm hover:opacity-95 transition cursor-pointer"
+          >
+            Regenerate with {pendingVoiceLabel.split(" ")[0]} &rarr;
+          </button>
+        </div>
+      )}
+
       {/* Success banner */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
             <Icon name="check" size={20} />
@@ -137,7 +177,9 @@ export default function AudioResult({
               Speech Generated Successfully!
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Listen to the high-definition studio preview below
+              {generatedVoiceLabel
+                ? `Voice: ${generatedVoiceLabel} (${generatedVoiceGender === "female" ? "Female" : "Male"})`
+                : "Listen to the high-definition studio preview below"}
             </p>
           </div>
         </div>

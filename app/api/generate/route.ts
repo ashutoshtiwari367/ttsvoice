@@ -10,7 +10,9 @@ import {
   TtsError,
 } from "@/lib/http";
 import { createClient } from "@/lib/supabase/server";
+import { admin } from "@/lib/supabase/admin";
 import { getUserCreditsAndTier } from "@/lib/credits";
+import { PAID_FEATURES_CONTROL } from "@/config/control";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,14 +23,14 @@ export async function POST(req: NextRequest) {
   const country = getCountry(req);
   const meta = getRequestMeta(req);
 
-  let body: { text?: string; lang?: string; voice?: string; speed?: number; turnstileToken?: string };
+  let body: { text?: string; lang?: string; voice?: string; speed?: number; pitch?: number; turnstileToken?: string };
   try {
     body = await req.json();
   } catch {
     return errorResponse("invalid_request", subject);
   }
 
-  const { text, lang, voice, speed, turnstileToken } = body;
+  const { text, lang, voice, speed, pitch, turnstileToken } = body;
   if (!text || typeof text !== "string" || !text.trim()) {
     return errorResponse("invalid_request", subject);
   }
@@ -37,12 +39,32 @@ export async function POST(req: NextRequest) {
   let customerId: string | null = null;
   let userTier: "free" | "paid" = "free";
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    let user = null;
+    try {
+      const supabase = await createClient();
+      const { data } = await supabase.auth.getUser();
+      user = data.user ?? null;
+    } catch {
+      // Cookies not available or expired
+    }
+
+    if (!user) {
+      const authHeader = req.headers.get("authorization");
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.replace("Bearer ", "").trim();
+        const { data } = await admin.auth.getUser(token);
+        user = data.user ?? null;
+      }
+    }
+
     if (user) {
       customerId = user.id;
-      const creditInfo = await getUserCreditsAndTier(user.id);
-      userTier = creditInfo.tier === "paid" ? "paid" : "free";
+      if (PAID_FEATURES_CONTROL.enabled) {
+        const creditInfo = await getUserCreditsAndTier(user.id);
+        userTier = creditInfo.tier === "paid" ? "paid" : "free";
+      } else {
+        userTier = "free";
+      }
     }
   } catch {
     // If auth check fails, treat as guest/anonymous
@@ -54,6 +76,7 @@ export async function POST(req: NextRequest) {
       lang: lang || "hi-IN",
       voiceId: voice || "hi-IN-Wavenet-A",
       speed: typeof speed === "number" ? speed : 1.0,
+      pitch: typeof pitch === "number" ? pitch : 0,
       subjectId: subject.sid,
       ip,
       country,

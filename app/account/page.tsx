@@ -4,6 +4,19 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { PAID_FEATURES_CONTROL } from "@/config/control";
+import AccountNavBar from "@/components/layout/AccountNavBar";
+import { getEmailAvatarLetter } from "@/lib/userPreferences";
+import {
+  CheckIcon,
+  CrownIcon,
+  FileTextIcon,
+  LogOutIcon,
+  RefreshCwIcon,
+  ShieldIcon,
+  SparklesIcon,
+  UserIcon,
+} from "@/components/ui/LucideIcons";
 
 interface PurchaseItem {
   id: number;
@@ -35,10 +48,15 @@ interface AccountData {
   validityStatus: string;
   tier: string;
   balance: number;
+  totalAllowance?: number;
+  usedChars?: number;
+  remainingChars?: number;
   reqCap: number;
   totalPurchasedChars: number;
   purchases: PurchaseItem[];
 }
+
+type TabKey = "overview" | "usage" | "profile" | "plan" | "billing";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -46,6 +64,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>("overview");
 
   const fetchAccount = async () => {
     try {
@@ -89,18 +108,21 @@ export default function AccountPage() {
   const handleSignOut = async () => {
     setSigningOut(true);
     const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      window.dispatchEvent(new Event("auth-changed"));
+      window.location.href = "/";
+    }
   };
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-4">
+      <main className="min-h-screen flex items-center justify-center bg-[#fafafa] dark:bg-[#111217] text-slate-900 dark:text-zinc-100 p-4">
         <div className="flex flex-col items-center gap-3">
-          <div className="size-10 rounded-full border-3 border-orange-500/20 border-t-[#ff5500] animate-spin" />
-          <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400">
-            Loading your account details...
+          <div className="size-8 rounded-full border-2 border-zinc-300 dark:border-zinc-700 border-t-[#ff5500] animate-spin" />
+          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            Loading account details...
           </p>
         </div>
       </main>
@@ -110,539 +132,684 @@ export default function AccountPage() {
   if (!data) return null;
 
   const isPaid = data.tier === "paid" || data.balance > 0;
-  const initial = (data.username || "U").charAt(0).toUpperCase();
+  const initial = getEmailAvatarLetter(data.email);
+
+  const totalChars = data.totalAllowance ?? 1000;
+  const remainingChars = data.remainingChars ?? data.balance;
+  const usedChars = data.usedChars ?? Math.max(0, totalChars - remainingChars);
+  const usagePercent = Math.min(
+    100,
+    Math.max(0, Math.round((usedChars / (totalChars || 1)) * 100))
+  );
 
   return (
-    <main className="relative min-h-screen text-slate-900 dark:text-zinc-100 transition-colors pb-24 overflow-hidden">
-      {/* Decorative background glows */}
-      <div className="pointer-events-none absolute -top-40 right-1/4 size-96 rounded-full bg-orange-500/10 blur-3xl" />
-      <div className="pointer-events-none absolute top-1/3 -left-20 size-80 rounded-full bg-amber-500/5 blur-3xl" />
+    <main className="min-h-screen bg-[#f7f7f8] dark:bg-[#0e0f12] text-zinc-900 dark:text-zinc-100 font-sans pb-20 transition-colors">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+        {/* Navigation Bar */}
+        <AccountNavBar />
 
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-8">
-        {/* Top Breadcrumb & Actions */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-black/[0.06] dark:border-white/[0.08]">
-          <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-500 dark:text-zinc-400">
-            <Link
-              href="/"
-              className="hover:text-[#ff5500] dark:hover:text-orange-400 transition"
-            >
-              Home
-            </Link>
-            <span>/</span>
-            <span className="text-slate-900 dark:text-white font-bold">
-              Account Information
-            </span>
+        {/* ChatGPT Style Top Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 px-5 rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 shadow-xs mb-6">
+          <div className="flex items-center gap-3.5">
+            <div className="size-11 rounded-xl bg-gradient-to-br from-[#ff6a1f] to-[#ff4400] text-white flex items-center justify-center text-lg font-black uppercase shadow-xs">
+              {initial}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
+                  {data.displayName || data.username}
+                </h1>
+                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                  {data.tier}
+                </span>
+                {data.customerNo && (
+                  <span className="hidden sm:inline-block font-mono text-[11px] text-zinc-400 dark:text-zinc-500">
+                    #{data.customerNo}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-xs sm:max-w-md">
+                {data.email}
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 self-start sm:self-center">
             <button
               type="button"
               onClick={handleManualRefresh}
               disabled={refreshing}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-white/80 dark:bg-zinc-900/80 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:border-orange-500/40 hover:text-[#ff5500] dark:hover:text-orange-400 transition shadow-xs cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer disabled:opacity-50"
               title="Refresh Balance"
             >
-              <span className={refreshing ? "animate-spin" : ""}>🔄</span>
-              <span>{refreshing ? "Refreshing..." : "Refresh"}</span>
+              <RefreshCwIcon size={13} className={refreshing ? "animate-spin text-orange-500" : ""} />
+              <span>{refreshing ? "Syncing..." : "Refresh"}</span>
             </button>
 
             <Link
-              href="/pricing"
-              className="btn-primary py-1.5 px-3.5 text-xs font-bold shadow-md inline-flex items-center gap-1.5"
+              href="/text-to-speech"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#ff6a1f] to-[#ff4400] text-white px-3.5 py-1.5 text-xs font-bold shadow-sm shadow-orange-500/25 hover:opacity-95 transition"
             >
-              <span>⚡</span>
-              <span>Recharge Credits</span>
+              <span>🎙️</span>
+              <span>Open Studio</span>
             </Link>
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition cursor-pointer disabled:opacity-50"
+            >
+              <LogOutIcon size={13} />
+              <span>{signingOut ? "Signing out..." : "Sign Out"}</span>
+            </button>
           </div>
         </div>
 
-        {/* 1. USER PROFILE IDENTITY HERO */}
-        <section className="mt-8 rounded-3xl border border-black/[0.08] dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.03] p-6 sm:p-8 backdrop-blur-xl shadow-xl shadow-black/[0.02] relative overflow-hidden">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-4 sm:gap-5">
-              {/* Big Avatar */}
-              <div className="relative shrink-0">
-                <div className="size-16 sm:size-20 rounded-2xl bg-gradient-to-br from-[#ff6a1f] to-[#ff4400] text-white flex items-center justify-center text-2xl sm:text-3xl font-black uppercase shadow-lg shadow-orange-500/25 border-2 border-white dark:border-zinc-800">
-                  {initial}
-                </div>
-                <span
-                  className="absolute -bottom-1 -right-1 size-5 rounded-full bg-emerald-500 border-2 border-white dark:border-zinc-900"
-                  title="Account Status: Active"
-                />
-              </div>
-
-              <div>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                  <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 dark:text-white">
-                    {data.displayName || data.username}
-                  </h1>
-
-                  <span className="inline-flex items-center gap-1 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-0.5 text-xs font-bold text-[#ff5500] dark:text-orange-400">
-                    @{data.username}
-                  </span>
-
-                  {data.customerNo && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/25 bg-blue-500/10 px-2.5 py-0.5 text-xs font-mono font-bold text-blue-600 dark:text-blue-400" title="Universal Customer Number">
-                      <span>#</span>{data.customerNo}
-                    </span>
-                  )}
-
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-500 dark:text-emerald-400">
-                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Active Member
-                  </span>
-                </div>
-
-                <p className="mt-1.5 text-xs sm:text-sm text-slate-600 dark:text-zinc-400 flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <span className="inline-flex items-center gap-1.5 font-medium">
-                    <span>✉️</span>
-                    <span>{data.email}</span>
-                  </span>
-
-                  {data.accountCreatedAt && (
-                    <span className="inline-flex items-center gap-1.5 text-slate-400 dark:text-zinc-500 text-xs">
-                      <span>📅 Joined</span>
-                      <span>
-                        {new Date(data.accountCreatedAt).toLocaleDateString("en-IN", {
-                          month: "short",
-                          year: "numeric",
-                          day: "numeric",
-                        })}
-                      </span>
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 self-start md:self-auto">
-              <Link
-                href="/text-to-speech"
-                className="btn-ghost py-2.5 px-4 text-xs font-bold border border-black/[0.08] dark:border-white/[0.08]"
-              >
-                <span>Studio</span>
-                <span>&rarr;</span>
-              </Link>
+        {/* ChatGPT Style Settings Container: Left Sidebar Tabs + Right Content Panel */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Navigation Sidebar */}
+          <aside className="lg:col-span-3 rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 p-2 shadow-xs">
+            <nav className="flex flex-row lg:flex-col gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none" aria-label="Account Settings Tabs">
               <button
                 type="button"
-                onClick={handleSignOut}
-                disabled={signingOut}
-                className="rounded-xl border border-red-500/20 bg-red-500/5 px-3.5 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-500/15 transition cursor-pointer disabled:opacity-50"
-              >
-                {signingOut ? "Signing out..." : "Sign Out"}
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* 2. CREDITS & BALANCE SHOWCASE (PRIMARY FOCUS) */}
-        <section className="mt-8 grid gap-6 md:grid-cols-3">
-          {/* Main Available Credits Box (Spans 2 cols) */}
-          <div className="md:col-span-2 rounded-3xl border-2 border-orange-500/30 bg-gradient-to-br from-white via-orange-500/[0.03] to-white dark:from-[#0d0d14] dark:via-orange-950/20 dark:to-[#0a0a10] p-6 sm:p-8 backdrop-blur-xl shadow-xl shadow-orange-500/5 relative overflow-hidden">
-            <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-orange-500/15 blur-2xl" />
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 px-3 py-1 text-xs font-bold text-[#ff5500] dark:text-orange-400">
-                  <span>🪙</span>
-                  <span>Live Character Balance</span>
-                </span>
-                <h2 className="mt-3 text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
-                  Total Credits Available
-                </h2>
-              </div>
-
-              <div className="inline-flex items-center gap-2">
-                <span className="rounded-xl bg-black/[0.04] dark:bg-white/[0.05] px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-zinc-300 border border-black/[0.06] dark:border-white/[0.08]">
-                  Tier: <strong className="text-orange-500 uppercase">{data.tier}</strong>
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-baseline gap-3">
-              <span className="text-5xl sm:text-6xl font-black tracking-tight text-slate-950 dark:text-white">
-                {data.balance.toLocaleString()}
-              </span>
-              <span className="text-base sm:text-lg font-bold text-orange-500 uppercase tracking-wide">
-                Credits (Chars)
-              </span>
-            </div>
-
-            <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-zinc-400">
-              Each character of text converted to natural Indian speech deducts 1 character credit.
-            </p>
-
-            <div className="mt-6 pt-6 border-t border-black/[0.06] dark:border-white/[0.08] grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                  Per-Request Cap
-                </span>
-                <p className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
-                  {data.reqCap.toLocaleString()} <span className="text-xs font-normal text-slate-400">chars</span>
-                </p>
-              </div>
-
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                  Lifetime Added
-                </span>
-                <p className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
-                  {data.totalPurchasedChars.toLocaleString()} <span className="text-xs font-normal text-slate-400">chars</span>
-                </p>
-              </div>
-
-              <div className="col-span-2 sm:col-span-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                  Speech Audio
-                </span>
-                <p className="text-base sm:text-lg font-extrabold text-emerald-500 dark:text-emerald-400 mt-0.5">
-                  Studio HD MP3
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Link
-                href="/pricing"
-                className="btn-primary py-2.5 px-5 text-xs sm:text-sm font-bold shadow-lg shadow-orange-500/25"
-              >
-                <span>Top Up / Buy More Credits &rarr;</span>
-              </Link>
-              <Link
-                href="/text-to-speech"
-                className="btn-ghost py-2.5 px-5 text-xs sm:text-sm font-bold border border-black/[0.08] dark:border-white/[0.08]"
-              >
-                <span>Open Voice Studio</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* Quick Stats / Info Side Card */}
-          <div className="rounded-3xl border border-black/[0.08] dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.025] p-6 sm:p-7 backdrop-blur-xl flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between pb-3 border-b border-black/[0.06] dark:border-white/[0.08]">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>🛡️</span>
-                  <span>Account Info</span>
-                </h3>
-                <span className="text-[10px] font-bold rounded-md bg-emerald-500/10 text-emerald-500 px-2 py-0.5 border border-emerald-500/20">
-                  Verified
-                </span>
-              </div>
-
-              <div className="mt-4 space-y-3.5 text-xs">
-                <div>
-                  <span className="text-slate-400 dark:text-zinc-500 font-medium block">
-                    Username
-                  </span>
-                  <span className="font-bold text-slate-900 dark:text-white text-sm">
-                    {data.username}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-slate-400 dark:text-zinc-500 font-medium block">
-                    Registered Email
-                  </span>
-                  <span className="font-semibold text-slate-900 dark:text-white truncate block">
-                    {data.email}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-slate-400 dark:text-zinc-500 font-medium block">
-                    User ID
-                  </span>
-                  <span className="font-mono text-[11px] text-slate-600 dark:text-zinc-400 truncate block">
-                    {data.userId || "—"}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-slate-400 dark:text-zinc-500 font-medium block">
-                    Supported Languages
-                  </span>
-                  <span className="font-bold text-slate-900 dark:text-white">
-                    Hindi, English, Tamil, Telugu + 12 more
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-black/[0.06] dark:border-white/[0.08]">
-              <Link
-                href="/pricing"
-                className="w-full text-center block text-xs font-bold text-[#ff5500] dark:text-orange-400 hover:underline"
-              >
-                Compare All Plans &amp; Packs &rarr;
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* 3. CURRENT ACTIVE PLAN, PURCHASE DATE & EXPIRY DETAILS */}
-        <section className="mt-8 rounded-3xl border border-black/[0.08] dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.025] p-6 sm:p-8 backdrop-blur-xl shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-black/[0.06] dark:border-white/[0.08]">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                Subscription / Plan Overview
-              </span>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white mt-1">
-                Current Active Plan: <span className="text-gradient">{data.activePlanName}</span>
-              </h2>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold border ${
-                  isPaid
-                    ? "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/25"
-                    : "bg-slate-500/10 text-slate-600 dark:text-zinc-400 border-slate-500/20"
+                onClick={() => setActiveTab("overview")}
+                className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition cursor-pointer text-left whitespace-nowrap border ${
+                  activeTab === "overview"
+                    ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border-orange-500/25 shadow-2xs"
+                    : "text-zinc-600 dark:text-zinc-400 hover:bg-orange-500/5 hover:text-[#ff5500] dark:hover:text-orange-400 border-transparent"
                 }`}
               >
-                <span
-                  className={`size-2 rounded-full ${
-                    isPaid ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                <SparklesIcon size={15} className={activeTab === "overview" ? "text-orange-500" : "text-zinc-400"} />
+                <span>Overview</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("usage")}
+                className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition cursor-pointer text-left whitespace-nowrap border ${
+                  activeTab === "usage"
+                    ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border-orange-500/25 shadow-2xs"
+                    : "text-zinc-600 dark:text-zinc-400 hover:bg-orange-500/5 hover:text-[#ff5500] dark:hover:text-orange-400 border-transparent"
+                }`}
+              >
+                <CrownIcon size={15} className={activeTab === "usage" ? "text-orange-500" : "text-zinc-400"} />
+                <span>Usage &amp; Quota</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("profile")}
+                className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition cursor-pointer text-left whitespace-nowrap border ${
+                  activeTab === "profile"
+                    ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border-orange-500/25 shadow-2xs"
+                    : "text-zinc-600 dark:text-zinc-400 hover:bg-orange-500/5 hover:text-[#ff5500] dark:hover:text-orange-400 border-transparent"
+                }`}
+              >
+                <UserIcon size={15} className={activeTab === "profile" ? "text-orange-500" : "text-zinc-400"} />
+                <span>Profile &amp; ID</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("plan")}
+                className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition cursor-pointer text-left whitespace-nowrap border ${
+                  activeTab === "plan"
+                    ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border-orange-500/25 shadow-2xs"
+                    : "text-zinc-600 dark:text-zinc-400 hover:bg-orange-500/5 hover:text-[#ff5500] dark:hover:text-orange-400 border-transparent"
+                }`}
+              >
+                <ShieldIcon size={15} className={activeTab === "plan" ? "text-orange-500" : "text-zinc-400"} />
+                <span>Plan &amp; Validity</span>
+              </button>
+
+              {PAID_FEATURES_CONTROL.enabled && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("billing")}
+                  className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition cursor-pointer text-left whitespace-nowrap border ${
+                    activeTab === "billing"
+                      ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border-orange-500/25 shadow-2xs"
+                      : "text-zinc-600 dark:text-zinc-400 hover:bg-orange-500/5 hover:text-[#ff5500] dark:hover:text-orange-400 border-transparent"
                   }`}
-                />
-                <span>{data.validityStatus}</span>
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Purchase Date */}
-            <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-black/[0.015] dark:bg-white/[0.015] p-4">
-              <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400 flex items-center gap-1.5">
-                <span>🗓️</span>
-                <span>Purchase Date</span>
-              </span>
-              <p className="mt-2 text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
-                {data.purchaseDate
-                  ? new Date(data.purchaseDate).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : "N/A (Free Tier)"}
-              </p>
-              <span className="mt-1 block text-[11px] text-slate-400 dark:text-zinc-500">
-                {data.purchaseDate ? "Transaction completed" : "Default registration tier"}
-              </span>
-            </div>
-
-            {/* Expiry Date */}
-            <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-black/[0.015] dark:bg-white/[0.015] p-4">
-              <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400 flex items-center gap-1.5">
-                <span>⏳</span>
-                <span>Expiry Date / Validity</span>
-              </span>
-              <p className="mt-2 text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
-                {data.expiryDate ? (
-                  new Date(data.expiryDate).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                ) : isPaid ? (
-                  <span className="text-emerald-500 dark:text-emerald-400 flex items-center gap-1">
-                    <span>∞</span>
-                    <span>Never Expires (Lifetime)</span>
-                  </span>
-                ) : (
-                  "Weekly Reset"
-                )}
-              </p>
-              <span className="mt-1 block text-[11px] text-slate-400 dark:text-zinc-500">
-                {isPaid
-                  ? "Standard credits never expire"
-                  : "Refreshes every 7 days automatically"}
-              </span>
-            </div>
-
-            {/* Audio Retention */}
-            <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-black/[0.015] dark:bg-white/[0.015] p-4">
-              <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400 flex items-center gap-1.5">
-                <span>📁</span>
-                <span>Audio Storage Retention</span>
-              </span>
-              <p className="mt-2 text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
-                {isPaid ? "7 Days Cloud Retention" : "24 Hours Retention"}
-              </p>
-              <span className="mt-1 block text-[11px] text-slate-400 dark:text-zinc-500">
-                Download MP3 anytime before expiry
-              </span>
-            </div>
-
-            {/* License & Rights */}
-            <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-black/[0.015] dark:bg-white/[0.015] p-4">
-              <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400 flex items-center gap-1.5">
-                <span>⚖️</span>
-                <span>Commercial Usage Rights</span>
-              </span>
-              <p className="mt-2 text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
-                {isPaid ? "Full Commercial Rights" : "Personal / Evaluation"}
-              </p>
-              <span className="mt-1 block text-[11px] text-slate-400 dark:text-zinc-500">
-                YouTube, Podcasts, Ads &amp; Audiobooks
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* 4. PURCHASE HISTORY & BILLING RECORDS */}
-        <section className="mt-8 rounded-3xl border border-black/[0.08] dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.025] p-6 sm:p-8 backdrop-blur-xl shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-black/[0.06] dark:border-white/[0.08]">
-            <div>
-              <h2 className="text-lg sm:text-xl font-black text-slate-950 dark:text-white flex items-center gap-2">
-                <span>📜</span>
-                <span>Purchase History &amp; Recharge Invoices</span>
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
-                Complete log of your prepaid pack recharges, character additions, and receipts.
-              </p>
-            </div>
-
-            <Link
-              href="/pricing"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#ff5500] dark:text-orange-400 hover:underline"
-            >
-              <span>+ Add More Credits</span>
-            </Link>
-          </div>
-
-          <div className="mt-6">
-            {data.purchases.length === 0 ? (
-              <div className="text-center py-12 rounded-2xl border border-dashed border-black/[0.08] dark:border-white/[0.08] p-8">
-                <span className="text-4xl">🛒</span>
-                <h3 className="mt-3 text-sm font-bold text-slate-900 dark:text-white">
-                  No purchases yet
-                </h3>
-                <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400 max-w-sm mx-auto">
-                  You are currently using the Free Tier (1,000 characters/week). Top up anytime to get Standard credits that never expire.
-                </p>
-                <Link
-                  href="/pricing"
-                  className="btn-primary mt-5 inline-flex py-2.5 px-5 text-xs font-bold shadow-md"
                 >
-                  View Plans &amp; Recharge &rarr;
-                </Link>
+                  <FileTextIcon size={15} className={activeTab === "billing" ? "text-orange-500" : "text-zinc-400"} />
+                  <span>Invoices &amp; Orders</span>
+                </button>
+              )}
+            </nav>
+
+            {/* Quick Balance Status in Sidebar */}
+            <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 px-3 hidden lg:block">
+              <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
+                <span>Remaining</span>
+                <span className="font-bold text-zinc-900 dark:text-white">
+                  {remainingChars.toLocaleString()}
+                </span>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[650px] border-collapse text-left">
-                  <thead>
-                    <tr className="border-b border-black/[0.06] dark:border-white/[0.08] text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                      <th className="py-3 px-4">Plan / Pack</th>
-                      <th className="py-3 px-4">Characters Added</th>
-                      <th className="py-3 px-4">Amount</th>
-                      <th className="py-3 px-4">Purchase Date</th>
-                      <th className="py-3 px-4">Validity / Expiry</th>
-                      <th className="py-3 px-4 text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-black/[0.04] dark:divide-white/[0.04] text-xs">
-                    {data.purchases.map((item) => (
-                      <tr
-                        key={item.id}
-                        className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
-                      >
-                        <td className="py-4 px-4">
-                          <span className="font-bold text-slate-900 dark:text-white">
-                            {item.packName}
-                          </span>
-                          <span className="block text-[11px] text-slate-400 dark:text-zinc-500 font-mono mt-0.5">
-                            ID: #{item.id} • {item.packId}
-                          </span>
-                        </td>
+              <div className="mt-2 h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-orange-500 transition-all duration-300 rounded-full"
+                  style={{ width: `${Math.max(5, 100 - usagePercent)}%` }}
+                />
+              </div>
+              <span className="mt-1.5 block text-[10px] text-zinc-400">
+                {totalChars.toLocaleString()} chars total allowance
+              </span>
+            </div>
+          </aside>
 
-                        <td className="py-4 px-4">
-                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                            +{item.charAmount.toLocaleString()} chars
-                          </span>
-                        </td>
+          {/* Right Main Content Area */}
+          <div className="lg:col-span-9 space-y-6">
+            {/* TAB 1: OVERVIEW */}
+            {activeTab === "overview" && (
+              <div className="rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 p-6 sm:p-7 shadow-xs space-y-6">
+                <div>
+                  <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                    Account Overview
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Live snapshot of your speech synthesis quotas, active plan, and usage stats.
+                  </p>
+                </div>
 
-                        <td className="py-4 px-4 font-black text-slate-900 dark:text-white text-sm">
-                          ₹{item.amount}
-                        </td>
+                {/* Minimalist Stat Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                  <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 p-4">
+                    <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">
+                      Available Balance
+                    </span>
+                    <div className="mt-1.5 flex items-baseline gap-1.5">
+                      <span className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
+                        {remainingChars.toLocaleString()}
+                      </span>
+                      <span className="text-xs font-semibold text-zinc-500">chars</span>
+                    </div>
+                    <span className="mt-1 block text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                      Ready to synthesize
+                    </span>
+                  </div>
 
-                        <td className="py-4 px-4 text-slate-600 dark:text-zinc-400">
-                          {new Date(item.date).toLocaleDateString("en-IN", {
+                  <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 p-4">
+                    <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">
+                      Active Plan
+                    </span>
+                    <div className="mt-1.5 flex items-baseline gap-1.5">
+                      <span className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">
+                        {data.activePlanName}
+                      </span>
+                    </div>
+                    <span className="mt-1 block text-[11px] text-zinc-500 dark:text-zinc-400">
+                      Status: <strong className="text-emerald-500">{data.validityStatus}</strong>
+                    </span>
+                  </div>
+
+                  <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 p-4">
+                    <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">
+                      Request Capacity
+                    </span>
+                    <div className="mt-1.5 flex items-baseline gap-1.5">
+                      <span className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
+                        {data.reqCap.toLocaleString()}
+                      </span>
+                      <span className="text-xs font-semibold text-zinc-500">chars/req</span>
+                    </div>
+                    <span className="mt-1 block text-[11px] text-zinc-500 dark:text-zinc-400">
+                      Standard neural model
+                    </span>
+                  </div>
+                </div>
+
+                {/* ChatGPT Row-Based Overview List */}
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/80 border-t border-b border-zinc-100 dark:border-zinc-800/80">
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">User Identification</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Primary email and customer ID</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">{data.email}</span>
+                      {data.customerNo && (
+                        <span className="block text-[11px] font-mono text-zinc-400">Customer #{data.customerNo}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Character Allowance Usage</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">
+                        {usedChars.toLocaleString()} used out of {totalChars.toLocaleString()} total
+                      </p>
+                    </div>
+                    <div className="w-36 text-right">
+                      <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{usagePercent}% used</span>
+                      <div className="mt-1 h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-orange-500 rounded-full"
+                          style={{ width: `${usagePercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Audio Storage Retention</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Cloud audio file availability</p>
+                    </div>
+                    <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                      {isPaid ? "7 Days Cloud Storage" : "24 Hours Retention"}
+                    </span>
+                  </div>
+
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Commercial Usage Rights</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">License for generated audio files</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
+                      <CheckIcon size={13} />
+                      <span>{isPaid ? "Commercial License" : "Personal / Evaluation"}</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Ready to voice your content?
+                  </span>
+                  <Link
+                    href="/text-to-speech"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 text-xs font-semibold transition shadow-xs"
+                  >
+                    <span>Open Voice Studio</span>
+                    <span>&rarr;</span>
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: USAGE & QUOTA */}
+            {activeTab === "usage" && (
+              <div className="rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 p-6 sm:p-7 shadow-xs space-y-6">
+                <div>
+                  <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                    Voice Quota &amp; Usage
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Detailed consumption meter for Indian and Global neural speech generation.
+                  </p>
+                </div>
+
+                {/* Big Clean Usage Box */}
+                <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                        Remaining Character Allowance
+                      </span>
+                      <div className="mt-1 flex items-baseline gap-2">
+                        <span className="text-4xl sm:text-5xl font-black text-zinc-900 dark:text-white tracking-tight">
+                          {remainingChars.toLocaleString()}
+                        </span>
+                        <span className="text-sm font-semibold text-zinc-500">
+                          / {totalChars.toLocaleString()} characters
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
+                      {totalChars - usedChars > 0 ? `${(totalChars - usedChars).toLocaleString()} remaining` : "Quota reached"}
+                    </span>
+                  </div>
+
+                  {/* Clean Minimal Progress Bar */}
+                  <div className="mt-4 h-2 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-orange-500 transition-all duration-300 rounded-full"
+                      style={{ width: `${Math.min(100, Math.max(2, (remainingChars / (totalChars || 1)) * 100))}%` }}
+                    />
+                  </div>
+
+                  <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+                    Used {usedChars.toLocaleString()} characters. Each converted character deducts exactly 1 character from your balance.
+                  </p>
+                </div>
+
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/80 border-t border-b border-zinc-100 dark:border-zinc-800/80">
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Per-Request Limit</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Maximum text length in a single generation</p>
+                    </div>
+                    <span className="font-bold text-zinc-900 dark:text-white">
+                      {data.reqCap.toLocaleString()} chars
+                    </span>
+                  </div>
+
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Lifetime Added Characters</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Total characters credited to this account</p>
+                    </div>
+                    <span className="font-bold text-zinc-900 dark:text-white">
+                      {data.totalPurchasedChars.toLocaleString()} chars
+                    </span>
+                  </div>
+
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Speech Audio Format</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">High definition audio output bitrate</p>
+                    </div>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      Studio HD MP3 (48 kHz)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/70 p-4 text-xs text-zinc-500 dark:text-zinc-400">
+                  💡 Free accounts receive 1,000 complimentary characters every cycle. Standard paid pack characters never expire.
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: PROFILE & ID */}
+            {activeTab === "profile" && (
+              <div className="rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 p-6 sm:p-7 shadow-xs space-y-6">
+                <div>
+                  <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                    Profile &amp; Identity
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Your personal profile attributes and authentication credentials.
+                  </p>
+                </div>
+
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/80 border-t border-b border-zinc-100 dark:border-zinc-800/80">
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Display Name</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Public profile identifier</p>
+                    </div>
+                    <span className="font-bold text-zinc-900 dark:text-white">
+                      {data.displayName || data.username}
+                    </span>
+                  </div>
+
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Username</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">System account handle</p>
+                    </div>
+                    <span className="font-mono text-xs text-zinc-600 dark:text-zinc-300">
+                      @{data.username}
+                    </span>
+                  </div>
+
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Email Address</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Login and notification email</p>
+                    </div>
+                    <span className="font-semibold text-zinc-900 dark:text-white">
+                      {data.email}
+                    </span>
+                  </div>
+
+                  {data.customerNo && (
+                    <div className="py-3.5 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-medium text-zinc-900 dark:text-zinc-100">Customer Number</span>
+                        <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Universal account reference</p>
+                      </div>
+                      <span className="font-mono font-bold text-xs text-zinc-900 dark:text-white">
+                        #{data.customerNo}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">User ID</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Unique database UUID</p>
+                    </div>
+                    <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400 truncate max-w-xs">
+                      {data.userId || "—"}
+                    </span>
+                  </div>
+
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Member Since</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Date account was created</p>
+                    </div>
+                    <span className="text-zinc-700 dark:text-zinc-300">
+                      {data.accountCreatedAt
+                        ? new Date(data.accountCreatedAt).toLocaleDateString("en-IN", {
+                            month: "short",
+                            year: "numeric",
+                            day: "numeric",
+                          })
+                        : "—"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/profile"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 px-3.5 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+                  >
+                    <span>Edit Profile Details</span>
+                    <span>&rarr;</span>
+                  </Link>
+
+                  <Link
+                    href="/settings"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 px-3.5 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+                  >
+                    <span>Security &amp; Preferences</span>
+                    <span>&rarr;</span>
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: PLAN & VALIDITY */}
+            {activeTab === "plan" && (
+              <div className="rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 p-6 sm:p-7 shadow-xs space-y-6">
+                <div>
+                  <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                    Plan &amp; Validity
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Entitlements, licensing, validity rules, and storage guarantees.
+                  </p>
+                </div>
+
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/80 border-t border-b border-zinc-100 dark:border-zinc-800/80">
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Current Plan Name</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Active tier subscription</p>
+                    </div>
+                    <span className="font-bold text-zinc-900 dark:text-white">
+                      {data.activePlanName}
+                    </span>
+                  </div>
+
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Validity Status</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Account state and expiration</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>{data.validityStatus}</span>
+                    </span>
+                  </div>
+
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Purchase Date</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Date of current activation</p>
+                    </div>
+                    <span className="text-zinc-700 dark:text-zinc-300">
+                      {data.purchaseDate
+                        ? new Date(data.purchaseDate).toLocaleDateString("en-IN", {
                             day: "numeric",
                             month: "short",
                             year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </td>
+                          })
+                        : "N/A (Default Tier)"}
+                    </span>
+                  </div>
 
-                        <td className="py-4 px-4">
-                          {item.expiryDate ? (
-                            <div>
-                              <span
-                                className={`font-semibold ${
-                                  item.isExpired
-                                    ? "text-red-500 dark:text-red-400"
-                                    : "text-slate-800 dark:text-zinc-200"
-                                }`}
-                              >
-                                {new Date(item.expiryDate).toLocaleDateString("en-IN", {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                })}
-                              </span>
-                              <span className="block text-[10px] text-slate-400">
-                                {item.validityLabel}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-emerald-500 dark:text-emerald-400 font-semibold">
-                              <span>∞</span>
-                              <span>Never Expires</span>
-                            </span>
-                          )}
-                        </td>
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Expiry Date</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Plan renewal or expiration</p>
+                    </div>
+                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                      {data.expiryDate ? (
+                        new Date(data.expiryDate).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      ) : isPaid ? (
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                          Never Expires (Lifetime)
+                        </span>
+                      ) : (
+                        "Weekly Refresh"
+                      )}
+                    </span>
+                  </div>
 
-                        <td className="py-4 px-4 text-right">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                              item.status === "paid"
-                                ? "bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 border border-emerald-500/25"
-                                : "bg-amber-500/15 text-amber-500 border border-amber-500/25"
-                            }`}
-                          >
-                            <span>✓</span>
-                            <span>{item.status}</span>
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Storage Retention</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Audio archive cloud duration</p>
+                    </div>
+                    <span className="text-zinc-700 dark:text-zinc-300">
+                      {isPaid ? "7 Days Cloud Archive" : "24 Hours Retention"}
+                    </span>
+                  </div>
+
+                  <div className="py-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Commercial License</span>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Permitted for YouTube, Ads, Podcasts</p>
+                    </div>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      {isPaid ? "Commercial Rights Granted" : "Personal / Evaluation"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: BILLING HISTORY (Only rendered when PAID_FEATURES_CONTROL is enabled) */}
+            {activeTab === "billing" && PAID_FEATURES_CONTROL.enabled && (
+              <div className="rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 p-6 sm:p-7 shadow-xs space-y-6">
+                <div>
+                  <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                    Purchase History &amp; Recharge Invoices
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Records of character pack purchases and account recharges.
+                  </p>
+                </div>
+
+                {data.purchases.length === 0 ? (
+                  <div className="text-center py-12 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 p-8">
+                    <span className="text-3xl">📜</span>
+                    <h3 className="mt-3 text-xs font-semibold text-zinc-900 dark:text-white">
+                      No purchase records yet
+                    </h3>
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto">
+                      You are using the complimentary free allowance. Convert speech anytime in Voice Studio.
+                    </p>
+                    <Link
+                      href="/text-to-speech"
+                      className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-4 py-2 text-xs font-semibold hover:opacity-90 transition"
+                    >
+                      <span>Open Voice Studio</span>
+                      <span>&rarr;</span>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[600px] border-collapse text-left">
+                      <thead>
+                        <tr className="border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
+                          <th className="py-2.5 px-3">Plan / Item</th>
+                          <th className="py-2.5 px-3">Characters</th>
+                          <th className="py-2.5 px-3">Amount</th>
+                          <th className="py-2.5 px-3">Date</th>
+                          <th className="py-2.5 px-3 text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80 text-xs">
+                        {data.purchases.map((item) => (
+                          <tr key={item.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors">
+                            <td className="py-3 px-3">
+                              <span className="font-semibold text-zinc-900 dark:text-white block">
+                                {item.packName}
+                              </span>
+                              <span className="font-mono text-[10px] text-zinc-400">
+                                #{item.id}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                +{item.charAmount.toLocaleString()}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 font-bold text-zinc-900 dark:text-white">
+                              ₹{item.amount}
+                            </td>
+                            <td className="py-3 px-3 text-zinc-500 dark:text-zinc-400">
+                              {new Date(item.date).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                <span>✓</span>
+                                <span>{item.status}</span>
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        </section>
+        </div>
 
-        {/* 5. HELPFUL FOOTER TIPS */}
-        <div className="mt-8 rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-black/[0.02] dark:bg-white/[0.02] p-5 text-xs text-slate-500 dark:text-zinc-400 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>
-            💡 Need customized high-capacity enterprise voice quotas or dedicated API access?{" "}
-            <Link href="/contact" className="text-[#ff5500] dark:text-orange-400 font-bold hover:underline">
+        {/* Minimal ChatGPT Style Bottom Support Bar */}
+        <div className="mt-8 rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="flex items-center gap-1.5">
+            <span>💡</span>
+            <span>Need enterprise voice quotas or custom model tuning?</span>
+            <Link href="/contact" className="text-orange-600 dark:text-orange-400 font-semibold hover:underline">
               Contact Support
             </Link>
           </p>
 
           <Link
             href="/faq"
-            className="text-xs font-semibold text-slate-600 dark:text-zinc-400 hover:text-slate-950 dark:hover:text-white transition"
+            className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition font-medium"
           >
-            Billing &amp; Credits FAQ &rarr;
+            Billing &amp; Usage FAQ &rarr;
           </Link>
         </div>
       </div>

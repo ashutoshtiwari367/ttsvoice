@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/config/site";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import ThemeToggle from "@/components/theme/ThemeToggle";
-
-import { extractUsername } from "@/lib/user";
+import ProfileDropdown from "@/components/layout/ProfileDropdown";
+import {
+  clearAccountClientCaches,
+  getCachedAuthUser,
+  setCachedAuthUser,
+} from "@/lib/userPreferences";
 
 const links = siteConfig.navLinks;
 
@@ -18,169 +22,86 @@ function isActivePath(pathname: string, href: string) {
 
 export default function Header() {
   const pathname = usePathname();
-  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
+    // 1. Instant 0ms synchronous cache read on hydration (prevents 2s guest-button flash)
+    const cached = getCachedAuthUser();
+    if (cached) {
+      setUser(cached);
+      setAuthReady(true);
+    }
+
     const supabase = createClient();
 
-    const checkUser = () => {
-      supabase.auth.getUser().then(({ data }) => {
-        setUser(data.user ?? null);
-      });
+    const syncSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const sessionUser = data.session?.user ?? null;
+        setUser(sessionUser);
+        setCachedAuthUser(sessionUser);
+      } finally {
+        setAuthReady(true);
+      }
     };
 
-    // Check user on mount and every time navigation/redirect occurs
-    checkUser();
+    syncSession();
 
-    // Subscribe to client-side auth changes
+    // Subscribe once to client-side auth & profile metadata changes
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
+      (event, session) => {
+        if (event === "INITIAL_SESSION") return;
+        const nextUser = session?.user ?? null;
+        setUser(nextUser);
+        setCachedAuthUser(nextUser);
+        setAuthReady(true);
       }
     );
 
-    window.addEventListener("auth-changed", checkUser);
+    const handleAuthChanged = () => {
+      const latestCached = getCachedAuthUser();
+      if (!latestCached) {
+        setUser(null);
+      }
+      syncSession();
+    };
+
+    window.addEventListener("auth-changed", handleAuthChanged);
 
     return () => {
       listener.subscription.unsubscribe();
-      window.removeEventListener("auth-changed", checkUser);
+      window.removeEventListener("auth-changed", handleAuthChanged);
     };
-  }, [pathname]);
+  }, []);
 
   const handleSignOut = async () => {
     setLoggingOut(true);
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    setMenuOpen(false);
+    // Clear account-specific UI state immediately before network roundtrip
     setUser(null);
-    setLoggingOut(false);
-    router.push("/login");
-    router.refresh();
+    const supabase = createClient();
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      clearAccountClientCaches();
+      setLoggingOut(false);
+      // Redirect to the main public TTS page
+      window.location.href = "/";
+    }
   };
 
-  const AuthButtons = ({ mobile = false }: { mobile?: boolean }) => {
-    if (user) {
-      const username = extractUsername(user.email);
-
-      if (mobile) {
-        return (
-          <div className="flex flex-col w-full gap-2.5">
-            <Link
-              href="/history"
-              onClick={() => setMenuOpen(false)}
-              className="flex items-center justify-between rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] p-3 text-xs font-bold text-slate-800 dark:text-zinc-200 hover:text-orange-500 transition"
-            >
-              <div className="flex items-center gap-2">
-                <span>🎙️</span>
-                <span>Generation History</span>
-              </div>
-              <span className="text-xs text-slate-400">&rarr;</span>
-            </Link>
-
-            <Link
-              href="/account"
-              onClick={() => setMenuOpen(false)}
-              className="flex items-center justify-between rounded-xl border border-orange-500/20 bg-orange-500/10 p-3 text-xs font-bold text-slate-800 dark:text-zinc-200 hover:border-orange-500/40 transition"
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-[#ff6a1f] to-[#ff4400] text-white text-xs font-black uppercase shadow-xs">
-                  {username.charAt(0) || "U"}
-                </span>
-                <div className="text-left">
-                  <div className="font-bold text-slate-950 dark:text-white">@{username}</div>
-                  <div className="text-[11px] text-slate-500 dark:text-zinc-400 font-normal truncate max-w-[180px]">
-                    {user.email}
-                  </div>
-                </div>
-              </div>
-              <span className="text-xs font-bold text-[#ff5500] dark:text-orange-400">
-                Account &rarr;
-              </span>
-            </Link>
-
-            <button
-              type="button"
-              onClick={handleSignOut}
-              disabled={loggingOut}
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer text-center"
-            >
-              {loggingOut ? "Signing out..." : "Sign out"}
-            </button>
-          </div>
-        );
-      }
-
-      const isAccountActive = pathname === "/account";
-      const isHistoryActive = pathname === "/history";
-
-      return (
-        <div className="flex items-center gap-2">
-          <Link
-            href="/studio"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 px-3 py-1.5 text-xs font-bold text-[#ff5500] dark:text-orange-400 transition shadow-xs"
-            title="Open IndianTTS Pro Studio"
-          >
-            <span>👑</span>
-            <span>Studio</span>
-          </Link>
-
-          <Link
-            href="/history"
-            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition shadow-xs ${
-              isHistoryActive
-                ? "border-orange-500/50 bg-orange-500/15 text-[#ff5500] dark:text-orange-400"
-                : "border-black/[0.08] dark:border-white/[0.08] bg-black/[0.03] dark:bg-white/[0.05] text-slate-800 dark:text-zinc-200 hover:border-orange-500/40 hover:text-[#ff5500] dark:hover:text-orange-400"
-            }`}
-            title="Generation History (Kept 24h)"
-          >
-            <span>🎙️</span>
-            <span>History</span>
-          </Link>
-
-          <Link
-            href="/account"
-            onClick={() => setMenuOpen(false)}
-            className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-bold transition shadow-xs group ${
-              isAccountActive
-                ? "border-orange-500/50 bg-orange-500/15 text-[#ff5500] dark:text-orange-400"
-                : "border-black/[0.08] dark:border-white/[0.08] bg-black/[0.03] dark:bg-white/[0.05] text-slate-800 dark:text-zinc-200 hover:border-orange-500/40 hover:text-[#ff5500] dark:hover:text-orange-400 hover:bg-orange-50/50 dark:hover:bg-orange-950/20"
-            }`}
-            title={`Signed in as ${user.email} (View Account)`}
-          >
-            <span className="flex size-5 items-center justify-center rounded-full bg-gradient-to-br from-[#ff6a1f] to-[#ff4400] text-white text-[10px] font-black uppercase shadow-xs">
-              {username.charAt(0) || "U"}
-            </span>
-            <span className="max-w-[130px] truncate">@{username}</span>
-          </Link>
-
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={loggingOut}
-            className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
-          >
-            {loggingOut ? "…" : "Sign out"}
-          </button>
-        </div>
-      );
-    }
-
+  const GuestAuthButtons = ({ mobile = false }: { mobile?: boolean }) => {
     const isHistoryActive = pathname === "/history";
 
     return (
-      <div className={`flex items-center gap-2 sm:gap-2.5 ${mobile ? "w-full justify-between" : ""}`}>
-        <Link
-          href="/studio"
-          onClick={() => setMenuOpen(false)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 px-3 py-1.5 text-xs font-bold text-[#ff5500] dark:text-orange-400 transition shadow-xs"
-          title="Open IndianTTS Pro Studio"
-        >
-          <span>👑</span>
-          <span>Studio</span>
-        </Link>
-
+      <div
+        className={`flex items-center gap-2 sm:gap-2.5 ${
+          mobile ? "w-full flex-wrap justify-between" : ""
+        }`}
+      >
         <Link
           href="/history"
           onClick={() => setMenuOpen(false)}
@@ -191,8 +112,18 @@ export default function Header() {
           }`}
           title="Generation History"
         >
-          <svg className="size-3.5 text-slate-500 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="size-3.5 text-slate-500 dark:text-zinc-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <span>History</span>
         </Link>
@@ -220,7 +151,7 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-black/[0.06] dark:border-white/[0.08] bg-white/70 dark:bg-[#06060a]/80 backdrop-blur-xl transition-colors">
+    <header className="sticky top-0 z-50 border-b border-black/[0.06] dark:border-white/[0.08] bg-white/95 dark:bg-[#06060a]/95 backdrop-blur-xl transition-colors">
       <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link
@@ -233,7 +164,15 @@ export default function Header() {
             aria-hidden="true"
             className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#ff6a1f] to-[#ff4400] text-white shadow-lg shadow-orange-500/25 transition-transform duration-300 group-hover:scale-105"
           >
-            <svg viewBox="0 0 24 24" fill="none" className="size-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className="size-5"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
               <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
               <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
@@ -242,12 +181,17 @@ export default function Header() {
 
           <span className="tracking-tight text-slate-900 dark:text-white">
             {siteConfig.namePrefix}
-            <span className="text-gradient font-black">{siteConfig.nameAccent}</span>
+            <span className="text-gradient font-black">
+              {siteConfig.nameAccent}
+            </span>
           </span>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav aria-label="Main navigation" className="hidden items-center gap-1.5 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.03] p-1.5 backdrop-blur-md lg:flex">
+        <nav
+          aria-label="Main navigation"
+          className="hidden items-center gap-1.5 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.03] p-1.5 backdrop-blur-md lg:flex"
+        >
           {links.map(({ href, label }) => {
             const active = isActivePath(pathname, href);
             return (
@@ -267,31 +211,61 @@ export default function Header() {
           })}
         </nav>
 
-        {/* Right side controls (Desktop) */}
-        <div className="hidden shrink-0 items-center gap-3 lg:flex">
+        {/* Unified Right Side Controls (Single ProfileDropdown mount across Desktop & Mobile) */}
+        <div className="flex shrink-0 items-center gap-2.5 lg:gap-3">
           <ThemeToggle />
-          <AuthButtons />
-        </div>
 
-        {/* Mobile controls (Theme Toggle + Hamburger) */}
-        <div className="flex items-center gap-2 lg:hidden">
-          <ThemeToggle />
+          {user ? (
+            <ProfileDropdown
+              user={user}
+              onSignOut={handleSignOut}
+              signingOut={loggingOut}
+            />
+          ) : authReady ? (
+            <div className="hidden lg:flex">
+              <GuestAuthButtons />
+            </div>
+          ) : (
+            <div className="hidden lg:block h-8 w-24 rounded-full bg-slate-200/50 dark:bg-zinc-800/50 animate-pulse" />
+          )}
 
           <button
             type="button"
-            className="inline-flex size-10 items-center justify-center rounded-xl border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-900 transition"
-            aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+            className="inline-flex size-9.5 items-center justify-center rounded-xl border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-900 transition cursor-pointer lg:hidden"
+            aria-label={
+              menuOpen ? "Close navigation menu" : "Open navigation menu"
+            }
             aria-expanded={menuOpen}
             aria-controls="mobile-navigation"
             onClick={() => setMenuOpen((open) => !open)}
           >
             {menuOpen ? (
-              <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="size-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             ) : (
-              <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              <svg
+                className="size-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             )}
           </button>
@@ -325,9 +299,11 @@ export default function Header() {
               );
             })}
 
-            <div className="mt-3 flex items-center justify-between border-t border-black/[0.06] dark:border-white/[0.08] pt-4">
-              <AuthButtons mobile />
-            </div>
+            {!user && (
+              <div className="mt-3 flex items-center justify-between border-t border-black/[0.06] dark:border-white/[0.08] pt-4">
+                <GuestAuthButtons mobile />
+              </div>
+            )}
           </div>
         </nav>
       )}

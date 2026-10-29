@@ -48,10 +48,25 @@ import { sanitizeTtsText } from '@/lib/tts/textSanitizer';
 
 export const googleProvider: TtsProvider = {
   name: 'google',
-  async synthesize({ text, lang, voice, speed }: SynthesizeParams): Promise<Buffer> {
+  async synthesize({ text, lang, voice, speed, pitch = 0 }: SynthesizeParams): Promise<Buffer> {
     // R4: Strip emojis/symbols before sending to Google, keep punctuation
     const textForGoogle = sanitizeTtsText(text) || text;
     const apiKey = process.env.GOOGLE_TTS_API_KEY || process.env.GOOGLE_API_KEY;
+
+    // Journey & Chirp voice models do not support speakingRate or pitch in Google Cloud TTS
+    const supportsProsody = !/Journey|Chirp/i.test(voice);
+    const audioConfig: {
+      audioEncoding: 'MP3';
+      speakingRate?: number;
+      pitch?: number;
+    } = { audioEncoding: 'MP3' };
+
+    if (supportsProsody) {
+      audioConfig.speakingRate = speed;
+      if (typeof pitch === 'number' && pitch !== 0) {
+        audioConfig.pitch = Math.max(-20, Math.min(20, pitch));
+      }
+    }
 
     // Direct Google Cloud Text-to-Speech REST API (if API Key provided)
     if (apiKey) {
@@ -65,7 +80,7 @@ export const googleProvider: TtsProvider = {
           body: JSON.stringify({
             input: { text: textForGoogle },
             voice: { languageCode: lang, name: voice },
-            audioConfig: { audioEncoding: 'MP3', speakingRate: speed },
+            audioConfig,
           }),
         }
       );
@@ -91,7 +106,7 @@ export const googleProvider: TtsProvider = {
     const [resp] = await getClient().synthesizeSpeech({
       input: { text: textForGoogle },
       voice: { languageCode: lang, name: voice },
-      audioConfig: { audioEncoding: 'MP3', speakingRate: speed },
+      audioConfig,
     });
 
     if (!resp.audioContent) {

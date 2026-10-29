@@ -3,10 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import VoiceControls, { ALL_LANGUAGES_CATALOG, type Language, type Voice } from "./VoiceControls";
+import VoiceControls from "./VoiceControls";
+import { ALL_LANGUAGES_CATALOG, type Language, type Voice } from "@/lib/tts/catalog";
+import { AUDIO_CONTROL_SETTINGS, CHAR_LIMIT_CONTROL, STUDIO_SPEAKING_STYLES } from "@/config/control";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import ThemeToggle from "@/components/theme/ThemeToggle";
+import ProfileDropdown from "@/components/layout/ProfileDropdown";
 import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 interface PremiumStudioWorkspaceProps {
   initialText?: string;
@@ -101,14 +105,13 @@ const DEFAULT_PROJECTS: RecentProject[] = [
   },
 ];
 
-const SPEAKING_STYLES = [
-  { id: "normal", label: "Normal", icon: "wave", speed: 1.0, pitch: 0 },
-  { id: "story", label: "Story", icon: "book", speed: 0.95, pitch: -2 },
-  { id: "news", label: "News", icon: "newspaper", speed: 1.05, pitch: 1 },
-  { id: "youtube", label: "YouTube", icon: "youtube", speed: 1.1, pitch: 3 },
-  { id: "podcast", label: "Podcast", icon: "podcast", speed: 1.0, pitch: -1 },
-  { id: "astonishing", label: "Astonishing", icon: "lightning", speed: 1.05, pitch: 4 },
-];
+const SPEAKING_STYLES = STUDIO_SPEAKING_STYLES.map((s) => ({
+  id: s.id,
+  label: s.label,
+  icon: s.studioIcon,
+  speed: s.speed,
+  pitch: s.pitch,
+}));
 
 export default function PremiumStudioWorkspace({
   initialText = "",
@@ -120,13 +123,15 @@ export default function PremiumStudioWorkspace({
 
   // Studio Script & TTS States
   const [text, setText] = useState(initialText);
-  const [selectedGender, setSelectedGender] = useState<"male" | "female">("male");
-  const [selectedLang, setSelectedLang] = useState<string>("hi-IN");
-  const [selectedVoice, setSelectedVoice] = useState<string>("hi-IN-Wavenet-B");
-  const [speakingStyle, setSpeakingStyle] = useState<string>("normal");
-  const [speed, setSpeed] = useState<number>(1.0);
-  const [pitch, setPitch] = useState<number>(0);
-  const [volume, setVolume] = useState<number>(100);
+  const [selectedGender, setSelectedGender] = useState<"male" | "female">(
+    AUDIO_CONTROL_SETTINGS.defaultGender
+  );
+  const [selectedLang, setSelectedLang] = useState<string>(AUDIO_CONTROL_SETTINGS.defaultLanguage);
+  const [selectedVoice, setSelectedVoice] = useState<string>(AUDIO_CONTROL_SETTINGS.defaultVoice);
+  const [speakingStyle, setSpeakingStyle] = useState<string>(AUDIO_CONTROL_SETTINGS.defaultStyle);
+  const [speed, setSpeed] = useState<number>(AUDIO_CONTROL_SETTINGS.speed.default);
+  const [pitch, setPitch] = useState<number>(AUDIO_CONTROL_SETTINGS.pitch.default);
+  const [volume, setVolume] = useState<number>(AUDIO_CONTROL_SETTINGS.volume.default);
   const [autoDetect, setAutoDetect] = useState<boolean>(true);
 
   // Advanced Accordion & Menus
@@ -149,8 +154,9 @@ export default function PremiumStudioWorkspace({
   const [projects, setProjects] = useState<RecentProject[]>(DEFAULT_PROJECTS);
 
   // User Profile
-  const [userName, setUserName] = useState<string>("Ashutosh Tiwari");
-  const [userEmail, setUserEmail] = useState<string>("ashutosh@example.com");
+  const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
+  const [userName, setUserName] = useState<string>("Guest");
+  const [userEmail, setUserEmail] = useState<string>("");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -161,12 +167,13 @@ export default function PremiumStudioWorkspace({
   useEffect(() => {
     try {
       const supabase = createClient();
-      supabase.auth.getUser().then(({ data }) => {
-        if (data.user) {
+      const syncUser = (u: User | null) => {
+        setSupabaseUser(u);
+        if (u) {
           setIsLoggedIn(true);
-          const email = data.user.email || "";
+          const email = u.email || "";
           setUserEmail(email);
-          const metaName = data.user.user_metadata?.full_name || data.user.user_metadata?.name;
+          const metaName = u.user_metadata?.full_name || u.user_metadata?.name;
           if (metaName) {
             setUserName(metaName);
           } else if (email) {
@@ -175,23 +182,33 @@ export default function PremiumStudioWorkspace({
           }
         } else {
           setIsLoggedIn(false);
+          setUserEmail("");
+          setUserName("Guest");
         }
+      };
+
+      supabase.auth.getUser().then(({ data }) => syncUser(data.user ?? null));
+      const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
+        syncUser(session?.user ?? null);
       });
+      return () => listener.subscription.unsubscribe();
     } catch {
       // ignore
     }
   }, []);
 
   const handleSignOut = async () => {
+    setSupabaseUser(null);
+    setIsLoggedIn(false);
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth-changed"));
-        window.location.href = "/login";
+        window.location.href = "/";
       }
     } catch {
-      window.location.href = "/login";
+      window.location.href = "/";
     }
   };
 
@@ -302,6 +319,7 @@ export default function PremiumStudioWorkspace({
           lang: selectedLang,
           voice: selectedVoice,
           speed,
+          pitch,
         }),
       });
 
@@ -550,89 +568,17 @@ export default function PremiumStudioWorkspace({
           {/* Theme Toggle Button */}
           <ThemeToggle />
 
-          {/* User Profile Pill Menu */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-2.5 rounded-full border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-1.5 pr-3 py-1 hover:border-orange-500/40 transition shadow-xs cursor-pointer"
+          {/* Reusable Profile Dropdown or Guest Sign In */}
+          {supabaseUser ? (
+            <ProfileDropdown user={supabaseUser} onSignOut={handleSignOut} />
+          ) : (
+            <Link
+              href="/login"
+              className="rounded-full border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3.5 py-1.5 text-xs font-bold text-slate-800 dark:text-zinc-200 hover:border-orange-500/40 transition shadow-xs"
             >
-              {/* Profile Avatar "A" */}
-              <span className="flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-[#ff5500] to-[#ff7a29] text-white text-xs font-black uppercase shadow-xs">
-                {userName.charAt(0) || "A"}
-              </span>
-
-              <div className="hidden sm:block text-left">
-                <div className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
-                  {userName}
-                </div>
-                <div className="text-[10px] font-semibold text-slate-400 dark:text-zinc-400">
-                  Pro Member
-                </div>
-              </div>
-
-              {/* Chevron */}
-              <svg className="size-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {userMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121520] p-2 shadow-xl z-50 animate-fadeIn text-xs">
-                <div className="p-2.5 border-b border-slate-100 dark:border-zinc-800">
-                  <div className="font-bold text-slate-900 dark:text-white">{userName}</div>
-                  <div className="text-[11px] text-slate-400 truncate">{userEmail}</div>
-                  <span className="mt-1.5 inline-block rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
-                    Pro Studio Active
-                  </span>
-                </div>
-                <div className="mt-1 space-y-1">
-                  <Link
-                    href="/account"
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition"
-                  >
-                    <span>👤</span>
-                    <span>Account &amp; Credits</span>
-                  </Link>
-                  <Link
-                    href="/history"
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition"
-                  >
-                    <span>🎙️</span>
-                    <span>Full Generation History</span>
-                  </Link>
-                  <Link
-                    href="/pricing"
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition"
-                  >
-                    <span>🪙</span>
-                    <span>Top-up / Manage Plan</span>
-                  </Link>
-
-                  <div className="pt-1 mt-1 border-t border-slate-100 dark:border-zinc-800">
-                    {isLoggedIn ? (
-                      <button
-                        type="button"
-                        onClick={handleSignOut}
-                        className="w-full flex items-center gap-2 rounded-xl px-3 py-2 font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition cursor-pointer text-left"
-                      >
-                        <span>🚪</span>
-                        <span>Sign Out</span>
-                      </button>
-                    ) : (
-                      <Link
-                        href="/login?next=/studio"
-                        className="flex items-center gap-2 rounded-xl px-3 py-2 font-semibold text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/20 transition"
-                      >
-                        <span>🔑</span>
-                        <span>Sign In</span>
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+              Log In
+            </Link>
+          )}
         </div>
       </header>
 
@@ -981,7 +927,7 @@ export default function PremiumStudioWorkspace({
             </div>
           </div>
 
-          {/* Over-limit Call to Action Banner (Encourages signup/upgrade without trimming) */}
+          {/* Over-limit Call to Action Banner (Configurable via `config/control.ts`) */}
           {isOverLimit && (
             <div className="rounded-2xl border-2 border-red-500/50 bg-gradient-to-br from-red-500/10 via-orange-500/10 to-amber-500/5 dark:from-red-950/50 dark:via-orange-950/30 dark:to-zinc-900/60 p-4 sm:p-5 shadow-lg shadow-red-500/5 animate-fadeIn">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -991,43 +937,35 @@ export default function PremiumStudioWorkspace({
                   </span>
                   <div>
                     <h4 className="text-sm sm:text-base font-black text-red-600 dark:text-red-400 flex items-center gap-2">
-                      <span>Character Limit Exceeded</span>
+                      <span>{CHAR_LIMIT_CONTROL.bannerTitle}</span>
                     </h4>
                     <p className="text-xs text-slate-600 dark:text-zinc-300 font-medium mt-1 leading-relaxed">
                       {!isLoggedIn
-                        ? "You have exceeded the guest character limit. Create a free account or log in to convert your full script!"
-                        : "You have reached your plan limit. Upgrade to Pro Studio to unlock up to 10,000+ characters at once!"}
+                        ? CHAR_LIMIT_CONTROL.guestBannerMessage
+                        : CHAR_LIMIT_CONTROL.loggedInBannerMessage}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 sm:self-center shrink-0 pl-12 sm:pl-0">
-                  {!isLoggedIn ? (
-                    <>
-                      <Link
-                        href="/signup"
-                        className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#ff5500] to-[#ff7324] hover:from-[#f05000] hover:to-[#ff6815] text-white px-4 py-2.5 text-xs font-black shadow-md shadow-orange-500/25 transition active:scale-95 cursor-pointer text-center"
-                      >
-                        <span>✨ Create Free Account</span>
-                        <span>→</span>
-                      </Link>
-                      <Link
-                        href="/login"
-                        className="rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 px-3.5 py-2.5 text-xs font-bold transition text-center"
-                      >
-                        Log In
-                      </Link>
-                    </>
-                  ) : (
+                {!isLoggedIn && (
+                  <div className="flex items-center gap-2 sm:self-center shrink-0 pl-12 sm:pl-0">
                     <Link
-                      href="/pricing"
+                      href={CHAR_LIMIT_CONTROL.primaryLoginHref}
                       className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#ff5500] to-[#ff7324] hover:from-[#f05000] hover:to-[#ff6815] text-white px-4 py-2.5 text-xs font-black shadow-md shadow-orange-500/25 transition active:scale-95 cursor-pointer text-center"
                     >
-                      <span>⚡ Upgrade Plan</span>
+                      <span>{CHAR_LIMIT_CONTROL.primaryLoginLabel}</span>
                       <span>→</span>
                     </Link>
-                  )}
-                </div>
+                    {CHAR_LIMIT_CONTROL.secondarySignupLabel && (
+                      <Link
+                        href={CHAR_LIMIT_CONTROL.secondarySignupHref}
+                        className="rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 px-3.5 py-2.5 text-xs font-bold transition text-center"
+                      >
+                        {CHAR_LIMIT_CONTROL.secondarySignupLabel}
+                      </Link>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1051,7 +989,9 @@ export default function PremiumStudioWorkspace({
               disabled={status === "generating" || (!isOverLimit && !text.trim())}
               onClick={() => {
                 if (isOverLimit) {
-                  window.location.href = !isLoggedIn ? "/signup" : "/pricing";
+                  if (!isLoggedIn && typeof window !== "undefined") {
+                    window.location.href = CHAR_LIMIT_CONTROL.primaryLoginHref;
+                  }
                   return;
                 }
                 handleGenerate(false);
@@ -1071,8 +1011,8 @@ export default function PremiumStudioWorkspace({
                   ? "Generating Audio..."
                   : isOverLimit
                   ? !isLoggedIn
-                    ? "Create Account to Convert Full Script →"
-                    : "Upgrade Plan to Convert Full Script →"
+                    ? `${CHAR_LIMIT_CONTROL.guestGenerateButtonText} →`
+                    : CHAR_LIMIT_CONTROL.loggedInGenerateButtonText
                   : "Generate Speech"}
               </span>
             </button>

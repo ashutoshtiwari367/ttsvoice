@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useEffect } from "react";
+import { CHAR_LIMIT_CONTROL } from "@/config/control";
 
 interface ScriptEditorProps {
   text: string;
@@ -146,7 +147,7 @@ export default function ScriptEditor({
           {isOverLimit && (
             <div className="absolute top-3 right-16 z-20 flex items-center gap-1.5 rounded-full bg-red-100 dark:bg-red-950/90 border border-red-300 dark:border-red-800 px-2.5 py-0.5 text-[11px] font-black text-red-700 dark:text-red-300 shadow-2xs">
               <span>🔒</span>
-              <span>Character Limit Exceeded</span>
+              <span>{CHAR_LIMIT_CONTROL.badgeText}</span>
             </div>
           )}
 
@@ -176,7 +177,7 @@ export default function ScriptEditor({
           )}
         </div>
 
-        {/* ── Character Count Bar ── */}
+        {/* ── Character Limit Bar (Only Limit Shown in Studio) ── */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 dark:border-zinc-800/80 bg-slate-50/70 dark:bg-zinc-900/40 p-3 sm:px-4 sm:py-2.5 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             <span
@@ -186,7 +187,7 @@ export default function ScriptEditor({
                   : "bg-white dark:bg-zinc-800 border-slate-200/60 dark:border-zinc-700 text-slate-600 dark:text-zinc-300"
               }`}
             >
-              Input Script:{" "}
+              Character Limit:{" "}
               <strong
                 className={`font-extrabold ${
                   isOverLimit ? "text-red-600 dark:text-red-400" : "text-slate-900 dark:text-white"
@@ -195,13 +196,6 @@ export default function ScriptEditor({
                 {currentCount} / {allowedLimit} characters
               </strong>
             </span>
-
-            <Link
-              href="/account"
-              className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 hover:text-[#ff5500] dark:hover:text-orange-400 transition ml-1"
-            >
-              Account Balance →
-            </Link>
           </div>
 
           {/* Progress bar + Count */}
@@ -228,7 +222,7 @@ export default function ScriptEditor({
           </div>
         </div>
 
-        {/* ── High-Converting Call to Action Banner (Replaces Trim Button) ── */}
+        {/* ── High-Converting Call to Action Banner (Configurable via `config/control.ts`) ── */}
         {isOverLimit && (
           <div className="rounded-2xl border-2 border-red-500/50 bg-gradient-to-br from-red-500/10 via-orange-500/10 to-amber-500/5 dark:from-red-950/50 dark:via-orange-950/30 dark:to-zinc-900/60 p-4 sm:p-5 shadow-lg shadow-red-500/5 animate-fadeIn">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -238,43 +232,35 @@ export default function ScriptEditor({
                 </span>
                 <div>
                   <h4 className="text-sm sm:text-base font-black text-red-600 dark:text-red-400 flex items-center gap-2">
-                    <span>Character Limit Exceeded</span>
+                    <span>{CHAR_LIMIT_CONTROL.bannerTitle}</span>
                   </h4>
                   <p className="text-xs text-slate-600 dark:text-zinc-300 font-medium mt-1 leading-relaxed">
                     {userType === "guest"
-                      ? "Guest conversion limit is 500 characters. Create a free account or log in to unlock higher limits and convert your full script!"
-                      : "You have exceeded your plan's character limit. Upgrade to Pro Studio to unlock up to 10,000+ characters at once!"}
+                      ? CHAR_LIMIT_CONTROL.guestBannerMessage
+                      : CHAR_LIMIT_CONTROL.loggedInBannerMessage}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 sm:self-center shrink-0 pl-12 sm:pl-0">
-                {userType === "guest" ? (
-                  <>
-                    <Link
-                      href="/signup"
-                      className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#ff5500] to-[#ff7324] hover:from-[#f05000] hover:to-[#ff6815] text-white px-4 py-2.5 text-xs font-black shadow-md shadow-orange-500/25 transition active:scale-95 cursor-pointer text-center"
-                    >
-                      <span>✨ Create Free Account</span>
-                      <span>→</span>
-                    </Link>
-                    <Link
-                      href="/login"
-                      className="rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 px-3.5 py-2.5 text-xs font-bold transition text-center"
-                    >
-                      Log In
-                    </Link>
-                  </>
-                ) : (
+              {userType === "guest" && (
+                <div className="flex items-center gap-2 sm:self-center shrink-0 pl-12 sm:pl-0">
                   <Link
-                    href="/pricing"
+                    href={CHAR_LIMIT_CONTROL.primaryLoginHref}
                     className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#ff5500] to-[#ff7324] hover:from-[#f05000] hover:to-[#ff6815] text-white px-4 py-2.5 text-xs font-black shadow-md shadow-orange-500/25 transition active:scale-95 cursor-pointer text-center"
                   >
-                    <span>⚡ Upgrade Plan</span>
+                    <span>{CHAR_LIMIT_CONTROL.primaryLoginLabel}</span>
                     <span>→</span>
                   </Link>
-                )}
-              </div>
+                  {CHAR_LIMIT_CONTROL.secondarySignupLabel && (
+                    <Link
+                      href={CHAR_LIMIT_CONTROL.secondarySignupHref}
+                      className="rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 px-3.5 py-2.5 text-xs font-bold transition text-center"
+                    >
+                      {CHAR_LIMIT_CONTROL.secondarySignupLabel}
+                    </Link>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -283,14 +269,16 @@ export default function ScriptEditor({
         <div className="flex items-center gap-2 rounded-2xl bg-amber-500/[0.08] dark:bg-amber-500/[0.05] border border-amber-500/20 p-3 sm:px-4 text-xs font-semibold text-slate-800 dark:text-amber-200">
           <span className="text-base shrink-0">💡</span>
           <span>
-            Sign in to get 500 extra characters and save your history for 24 hours.
+            {userType === "guest"
+              ? CHAR_LIMIT_CONTROL.guestInfoTipText
+              : CHAR_LIMIT_CONTROL.loggedInInfoTipText}
           </span>
           {userType === "guest" && (
             <Link
-              href="/login"
+              href={CHAR_LIMIT_CONTROL.primaryLoginHref}
               className="ml-auto shrink-0 font-extrabold text-[#ff5500] hover:underline"
             >
-              Sign In Free →
+              {CHAR_LIMIT_CONTROL.guestInfoTipActionLabel}
             </Link>
           )}
         </div>

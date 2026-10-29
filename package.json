@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node -e \"try{fs.rmSync('.next',{recursive:true,force:true})}catch(e){}\" && next dev",
+    "clean": "node -e \"['.next','tsconfig.tsbuildinfo','node_modules/.cache'].forEach(p=>{try{fs.rmSync(p,{recursive:true,force:true})}catch(e){}})\"",
+    "dev": "npm run clean && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

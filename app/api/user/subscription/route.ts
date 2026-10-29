@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { admin } from "@/lib/supabase/admin";
 import { extractUsername, formatDisplayName } from "@/lib/user";
+import { getUserAllowance } from "@/lib/allowance";
+import { PAID_FEATURES_CONTROL } from "@/config/control";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -119,23 +121,26 @@ export async function GET() {
       };
     });
 
-    // Fetch customer_no from customers
-    const { data: customerRow } = await admin
-      .from("customers")
-      .select("customer_no")
-      .eq("id", user.id)
-      .maybeSingle();
+    // Fetch customer_no and live character allowance in parallel
+    const [{ data: customerRow }, allowance] = await Promise.all([
+      admin
+        .from("customers")
+        .select("customer_no")
+        .eq("id", user.id)
+        .maybeSingle(),
+      getUserAllowance({ customerId: user.id }),
+    ]);
 
     const lastPaid = paidPurchases[0];
     let activePlan = "Free Tier";
-    let activePlanName = "Free Tier (10,000 Chars / request)";
+    let activePlanName = "Free Plan (1,000 Characters)";
     let tier = "free";
-    let reqCap = 10000;
+    let reqCap = allowance.singleReqCap;
     let purchaseDate: string | null = null;
     let expiryDate: string | null = null;
-    let validityStatus = "Daily Quota (20K Chars)";
+    let validityStatus = "24h Audio History • 1,000 Chars";
 
-    if (balance > 0 && lastPaid) {
+    if (PAID_FEATURES_CONTROL.enabled && balance > 0 && lastPaid) {
       tier = "paid";
       reqCap = 10000;
       purchaseDate = lastPaid.paid_at || lastPaid.created_at;
@@ -165,17 +170,20 @@ export async function GET() {
         activePlanName = "Pro Voice Pack";
         validityStatus = "Active";
       }
-    } else if (balance > 0) {
+    } else if (PAID_FEATURES_CONTROL.enabled && balance > 0) {
       tier = "paid";
       activePlan = "Pro Balance";
       activePlanName = "Prepaid Voice Balance";
       validityStatus = "Active";
     }
 
+    const effectiveBalance =
+      tier === "paid" ? balance : allowance.remainingChars;
+
     return NextResponse.json({
       isAuthenticated: true,
       userId: user.id,
-      customerNo: customerRow?.customer_no ?? null,
+      customerNo: customerRow?.customer_no ?? allowance.customerNo ?? null,
       email: user.email,
       username,
       displayName,
@@ -187,7 +195,10 @@ export async function GET() {
       expiryDate,
       validityStatus,
       tier,
-      balance,
+      balance: effectiveBalance,
+      totalAllowance: allowance.totalAllowance,
+      usedChars: allowance.usedChars,
+      remainingChars: allowance.remainingChars,
       reqCap,
       totalPurchasedChars,
       purchases: formattedPurchases,

@@ -1,7 +1,7 @@
 import { config } from '@/lib/config';
 import { contentHash, hashIp, normalizeText } from '@/lib/hash';
 import { TtsError, type ErrorCode, type RequestMeta } from '@/lib/http';
-import { getVoice, type VoiceRow } from '@/lib/tts/catalog';
+import { getVoiceSync, isSupportedLanguage, type VoiceRow } from '@/lib/tts/catalog';
 import { selectProvider } from '@/lib/tts/providers';
 import { getStorage } from '@/lib/storage';
 import { audioObjectKey } from '@/lib/storage/keys';
@@ -32,6 +32,7 @@ export interface GenerateInput {
   lang: string;
   voiceId: string;
   speed: number;
+  pitch?: number;
   subjectId: string;
   ip: string;
   country: string | null;
@@ -164,17 +165,16 @@ export async function generateTts(input: GenerateInput): Promise<GenerateResult>
     return mockResult(ctx);
   }
 
-  // 5. Cache hits cost nothing, so they bypass quotas and the global cap.
+  // 5. Check audio cache first (saves provider synthesis cost while still debiting user allowance)
   const cachedKey = await findInCache(ctx);
-  if (cachedKey) return finalize(ctx, cachedKey, true);
 
-  // 6. Global daily circuit-breaker -> busy experience, never a dead end.
-  if (await overGlobalCap(ctx.chars)) {
+  // 6. Global daily circuit-breaker (only needed when calling live provider)
+  if (!cachedKey && (await overGlobalCap(ctx.chars))) {
     await updateInputStatus(inputId, 'busy', 'global_cap_reached', 'Daily safety capacity reached');
     return busyResult(ctx.lang, ctx.chars);
   }
 
-  // 7. Subject quota (day/week/month/generations) + IP ceiling, atomic, refunded on failure.
+  // 7. Subject quota / character debit + IP ceiling, atomic, refunded on failure.
   let reservation: Reservation;
   try {
     reservation = await reserveUsage(ctx);
@@ -184,6 +184,8 @@ export async function generateTts(input: GenerateInput): Promise<GenerateResult>
     }
     throw err;
   }
+
+  if (cachedKey) return finalize(ctx, cachedKey, true);
 
   let objectKey: string;
   try {
@@ -202,13 +204,13 @@ export async function generateTts(input: GenerateInput): Promise<GenerateResult>
 
 async function saveInputEarly(input: GenerateInput, text: string): Promise<InputId> {
   try {
-    // Look up the provider so the hash matches the generation hash for valid requests.
-    const voice = await getVoice(input.voiceId).catch(() => null);
+    // Instant in-memory lookup so the hash matches the generation hash without DB delay.
+    const voice = getVoiceSync(input.voiceId) ?? null;
     const stored = text.length > INPUT_STORE_MAX_CHARS ? text.slice(0, INPUT_STORE_MAX_CHARS) : text;
     return await insertInput({
       content: stored,
       contentHash: contentHash({
-        text, lang: input.lang, voice: input.voiceId, speed: input.speed, provider: voice?.provider ?? 'unknown',
+        text, lang: input.lang, voice: input.voiceId, speed: input.speed, pitch: input.pitch, provider: voice?.provider ?? 'unknown',
       }),
       charCount: text.length,
       isFlagged: false,
@@ -235,9 +237,11 @@ async function validateRequest(input: GenerateInput, ipHash: string, inputId: In
   const brand = await getBrand(config.defaultBrandId);
   if (!brand) throw new TtsError('server_error');
 
-  if (!brand.allowed_language_codes.includes(input.lang)) throw new TtsError('unsupported_language');
+  if (!isSupportedLanguage(input.lang) && !brand.allowed_language_codes.includes(input.lang)) {
+    throw new TtsError('unsupported_language');
+  }
 
-  const voice = await getVoice(input.voiceId);
+  const voice = getVoiceSync(input.voiceId);
   if (!voice || voice.language_code !== input.lang) throw new TtsError('invalid_voice');
 
   const customerId = input.customerId ?? null;
@@ -280,7 +284,7 @@ async function validateRequest(input: GenerateInput, ipHash: string, inputId: In
     subjectKey: customerId ?? input.subjectId,
     ipHash,
     chars,
-    hash: contentHash({ text, lang: input.lang, voice: input.voiceId, speed: input.speed, provider: voice.provider }),
+    hash: contentHash({ text, lang: input.lang, voice: input.voiceId, speed: input.speed, pitch: input.pitch, provider: voice.provider }),
     voice,
     brandId: brand.id,
     provider: voice.provider,
@@ -353,6 +357,7 @@ async function synthesizeAudio(ctx: Ctx): Promise<Buffer> {
     lang: ctx.lang,
     voice: ctx.voiceId,
     speed: ctx.speed,
+    pitch: ctx.pitch ?? 0,
   });
 }
 

@@ -15,19 +15,19 @@
 export const siteConfig = {
   // ── 1. WEBSITE IDENTITY & BRANDING ──────────────────────────────────────────
   /** Full website name displayed across the site and in browser tabs */
-  name: "IndianTTS",
+  name: "FreeTTSVoice",
 
   /** Short abbreviation or alternative brand name */
-  shortName: "IndianTTS",
+  shortName: "FreeTTSVoice",
 
   /** Logo first word (e.g. "Indian" in "IndianTTS") */
-  namePrefix: "Indian",
+  namePrefix: "FreeTTS",
 
   /** Logo highlighted accent text (displayed in orange gradient, e.g. "TTS") */
-  nameAccent: "TTS",
+  nameAccent: "Voice",
 
   /** Brand ID used in database (must match brands_website table if multi-tenant) */
-  brandId: "freetts",
+  brandId: "freettsvoice",
 
   /** Catchy tagline displayed in headers and Hero sections */
   tagline: "Natural Indian AI Voices, Simply.",
@@ -125,7 +125,6 @@ export const siteConfig = {
     { href: "/about", label: "About" },
     { href: "/blog", label: "Blog" },
     { href: "/tools", label: "More Tools" },
-    { href: "/pricing", label: "Pricing" },
     { href: "/faq", label: "FAQ" },
   ],
 

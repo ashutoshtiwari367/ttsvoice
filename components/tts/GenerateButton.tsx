@@ -1,5 +1,7 @@
 "use client";
 
+import { CHAR_LIMIT_CONTROL } from "@/config/control";
+
 interface GenerateButtonProps {
   generating: boolean;
   disabled: boolean;
@@ -21,8 +23,8 @@ export default function GenerateButton({
 }: GenerateButtonProps) {
   const handleButtonClick = () => {
     if (isOverLimit) {
-      if (typeof window !== "undefined") {
-        window.location.href = userType === "guest" ? "/signup" : "/pricing";
+      if (userType === "guest" && typeof window !== "undefined") {
+        window.location.href = CHAR_LIMIT_CONTROL.primaryLoginHref;
       }
       return;
     }
@@ -74,16 +76,18 @@ export default function GenerateButton({
             <span>🔒</span>
             <span>
               {userType === "guest"
-                ? "Create Account to Convert Full Script"
-                : "Upgrade Plan to Convert Full Script"}
+                ? CHAR_LIMIT_CONTROL.guestGenerateButtonText
+                : CHAR_LIMIT_CONTROL.loggedInGenerateButtonText}
             </span>
-            <span className="text-xl transition-transform duration-200 group-hover:translate-x-1">
-              →
-            </span>
+            {userType === "guest" && (
+              <span className="text-xl transition-transform duration-200 group-hover:translate-x-1">
+                →
+              </span>
+            )}
           </div>
         ) : remainingAllowance <= 0 ? (
           <>
-            <span>Allowance Exhausted • Please Recharge</span>
+            <span>Weekly Allowance Exhausted</span>
           </>
         ) : (
           <>
@@ -107,8 +111,8 @@ export default function GenerateButton({
       {isOverLimit ? (
         <p className="mt-2 text-center text-xs font-bold text-red-600 dark:text-red-400 animate-fadeIn">
           {userType === "guest"
-            ? "Free accounts unlock 5,000+ characters • Convert full script without trimming!"
-            : "Upgrade to Pro Studio to convert up to 10,000+ characters at once!"}
+            ? CHAR_LIMIT_CONTROL.guestGenerateSubtext
+            : CHAR_LIMIT_CONTROL.loggedInGenerateSubtext}
         </p>
       ) : !disabled && !generating ? (
         <p className="mt-2 text-center text-[11px] font-medium text-slate-400 dark:text-zinc-500">
