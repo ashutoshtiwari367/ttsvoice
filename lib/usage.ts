@@ -363,28 +363,9 @@ export async function logGeneration(r: GenerationLog) {
   let { error, finalPayload } = await tryInsertGenerationPayload(payload);
   if (!error) return;
 
-  // Step 2: Handle Foreign Key violation (23503) — seed missing voice/language/customer & retry
+  // Step 2: Handle Foreign Key violation (23503) — handle customer or unlinked input_id safely without auto-adding languages/voices
   if (error.code === '23503') {
     try {
-      await admin.from('tts_languages').upsert(
-        { code: r.languageCode, label: r.languageCode, is_active: true, sort_order: 99 },
-        { onConflict: 'code' }
-      );
-      await admin.from('models_voices').upsert(
-        {
-          id: r.voiceId,
-          language_code: r.languageCode,
-          display_name: r.voiceId,
-          gender: 'female',
-          provider: r.provider,
-          tier: r.voiceTier,
-          cost_per_millchar: r.costPerMillcharSrc,
-          cost_currency: r.costSourceCurrency,
-          is_active: true,
-          sort_order: 99,
-        },
-        { onConflict: 'id' }
-      );
       if (r.customerId) {
         await admin.from('customers').upsert(
           { id: r.customerId, brand_id: r.brandId, account_status: 'active' },
@@ -397,15 +378,15 @@ export async function logGeneration(r: GenerationLog) {
       finalPayload = fkRetry.finalPayload;
       if (!error) return;
 
-      // If input_id still points to parked legacy table tz_tts_inputs, retry with input_id = null
+      // If input_id still points to missing item, retry with input_id = null
       if (error.code === '23503' && finalPayload.input_id != null) {
         const withoutInputFk = { ...finalPayload, input_id: null };
         const inputFkRetry = await tryInsertGenerationPayload(withoutInputFk);
         error = inputFkRetry.error;
         if (!error) return;
       }
-    } catch (seedErr) {
-      console.warn('log_generation_fk_seed_warn', seedErr);
+    } catch (retryErr) {
+      console.warn('log_generation_fk_retry_warn', retryErr);
     }
   }
 

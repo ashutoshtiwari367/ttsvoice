@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVoiceSync } from '@/lib/tts/catalog';
+import { validateTtsSelectionAgainstDb, type ValidatedTtsSelection } from '@/lib/tts/dbValidation';
+import { TtsError } from '@/lib/http';
 import { selectProvider } from '@/lib/tts/providers';
+
+const STATUS_MAP: Record<string, number> = {
+  invalid_request: 400,
+  unsupported_language: 400,
+  invalid_voice: 400,
+  voice_not_allowed: 403,
+  server_error: 500,
+};
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -76,14 +85,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
 
-  // Instant 0ms in-memory lookup from `lib/tts/catalog` (`config/control.ts`)
-  const voiceRow = getVoiceSync(voiceId);
-
-  if (!voiceRow || voiceRow.language_code !== lang) {
-    return NextResponse.json({ error: 'invalid_voice' }, { status: 400 });
+  // Backend database validation against models_voices and tts_languages/tts_langugae
+  let validated: ValidatedTtsSelection;
+  try {
+    validated = await validateTtsSelectionAgainstDb(lang, voiceId);
+  } catch (err: any) {
+    if (err instanceof TtsError) {
+      const status = STATUS_MAP[err.code] || 400;
+      return NextResponse.json({ error: err.code }, { status });
+    }
+    console.error('preview_db_validation_error', err);
+    return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 
-  const cacheKey = `${lang}|${voiceId}|${speed.toFixed(1)}|${pitch}`;
+  const cacheKey = `${validated.languageCode}|${validated.voiceId}|${speed.toFixed(1)}|${pitch}`;
   const cached = previewCache.get(cacheKey);
   if (cached) {
     return new NextResponse(new Uint8Array(cached), {
@@ -95,14 +110,14 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const sampleText = getSampleSentence(lang, voiceRow.display_name, voiceRow.gender);
+  const sampleText = getSampleSentence(validated.languageCode, validated.displayName, validated.gender);
 
   try {
-    const provider = selectProvider(voiceRow.provider || 'google');
+    const provider = selectProvider(validated.provider || 'google');
     const audio = await provider.synthesize({
       text: sampleText,
-      lang,
-      voice: voiceRow.id,
+      lang: validated.languageCode,
+      voice: validated.voiceId,
       speed,
       pitch,
     });

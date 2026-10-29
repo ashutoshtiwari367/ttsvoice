@@ -34,6 +34,9 @@ export async function POST(req: NextRequest) {
   if (!text || typeof text !== "string" || !text.trim()) {
     return errorResponse("invalid_request", subject);
   }
+  if (!lang || typeof lang !== "string" || !lang.trim() || !voice || typeof voice !== "string" || !voice.trim()) {
+    return errorResponse("invalid_request", subject);
+  }
 
   // Check if authenticated user is logged in
   let customerId: string | null = null;
@@ -73,8 +76,8 @@ export async function POST(req: NextRequest) {
   try {
     const result = await generateTts({
       text,
-      lang: lang || "hi-IN",
-      voiceId: voice || "hi-IN-Wavenet-A",
+      lang: lang.trim(),
+      voiceId: voice.trim(),
       speed: typeof speed === "number" ? speed : 1.0,
       pitch: typeof pitch === "number" ? pitch : 0,
       subjectId: subject.sid,

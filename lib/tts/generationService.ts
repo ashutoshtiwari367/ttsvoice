@@ -1,7 +1,8 @@
 import { config } from '@/lib/config';
 import { contentHash, hashIp, normalizeText } from '@/lib/hash';
 import { TtsError, type ErrorCode, type RequestMeta } from '@/lib/http';
-import { getVoiceSync, isSupportedLanguage, type VoiceRow } from '@/lib/tts/catalog';
+import { getVoiceSync, type VoiceRow } from '@/lib/tts/catalog';
+import { validateTtsSelectionAgainstDb } from '@/lib/tts/dbValidation';
 import { selectProvider } from '@/lib/tts/providers';
 import { getStorage } from '@/lib/storage';
 import { audioObjectKey } from '@/lib/storage/keys';
@@ -237,12 +238,29 @@ async function validateRequest(input: GenerateInput, ipHash: string, inputId: In
   const brand = await getBrand(config.defaultBrandId);
   if (!brand) throw new TtsError('server_error');
 
-  if (!isSupportedLanguage(input.lang) && !brand.allowed_language_codes.includes(input.lang)) {
-    throw new TtsError('unsupported_language');
+  // Validate language and voice model against live database (models_voices & tts_languages/tts_langugae)
+  const validatedSelection = await validateTtsSelectionAgainstDb(input.lang, input.voiceId);
+
+  // If brand configuration has explicit allowed_language_codes restriction, check it
+  if (brand.allowed_language_codes && brand.allowed_language_codes.length > 0) {
+    if (!brand.allowed_language_codes.includes(validatedSelection.languageCode)) {
+      throw new TtsError('unsupported_language');
+    }
   }
 
-  const voice = getVoiceSync(input.voiceId);
-  if (!voice || voice.language_code !== input.lang) throw new TtsError('invalid_voice');
+  // Resolve trusted voice configuration directly from the database record
+  const voice: VoiceRow = {
+    id: validatedSelection.voiceId,
+    language_code: validatedSelection.languageCode,
+    display_name: validatedSelection.displayName,
+    gender: validatedSelection.gender,
+    provider: validatedSelection.provider,
+    tier: validatedSelection.tier,
+    cost_per_millchar: validatedSelection.costPerMillchar,
+    cost_currency: validatedSelection.costCurrency,
+    preview_url: validatedSelection.previewUrl,
+    sort_order: 0,
+  };
 
   const customerId = input.customerId ?? null;
   const userTier = input.userTier ?? 'free';
@@ -276,6 +294,8 @@ async function validateRequest(input: GenerateInput, ipHash: string, inputId: In
 
   return {
     ...input,
+    lang: validatedSelection.languageCode,
+    voiceId: validatedSelection.voiceId,
     customerId,
     userTier,
     userCategory: input.userCategory ?? 'human',
@@ -284,7 +304,14 @@ async function validateRequest(input: GenerateInput, ipHash: string, inputId: In
     subjectKey: customerId ?? input.subjectId,
     ipHash,
     chars,
-    hash: contentHash({ text, lang: input.lang, voice: input.voiceId, speed: input.speed, pitch: input.pitch, provider: voice.provider }),
+    hash: contentHash({
+      text,
+      lang: validatedSelection.languageCode,
+      voice: validatedSelection.voiceId,
+      speed: input.speed,
+      pitch: input.pitch,
+      provider: voice.provider,
+    }),
     voice,
     brandId: brand.id,
     provider: voice.provider,

@@ -801,16 +801,17 @@ export default function VoiceControls({
                 <button
                   type="button"
                   onClick={() => setGenderFilter("all")}
-                  className={`flex items-center justify-center gap-1.5 rounded-xl border py-1.5 px-2 text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 rounded-xl border py-2 px-2 text-xs font-bold transition-all cursor-pointer ${
                     genderFilter === "all"
-                      ? "border-orange-500 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 shadow-xs ring-1 ring-orange-500/20"
+                      ? "border-orange-500 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 shadow-xs ring-2 ring-orange-500/30"
                       : "border-slate-200/90 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-900/40 text-slate-600 dark:text-zinc-400 hover:border-orange-300"
                   }`}
                 >
-                  <span className="flex size-6 items-center justify-center rounded-full bg-slate-200 dark:bg-zinc-800 text-[11px] font-bold">
+                  <span className="flex size-5 items-center justify-center rounded-full bg-slate-200 dark:bg-zinc-800 text-[11px] font-bold">
                     👥
                   </span>
                   <span>All</span>
+                  {genderFilter === "all" && <span className="text-[10px] text-orange-500 font-black">✓</span>}
                 </button>
 
                 {/* Option 2: Male (small male avatar image) */}
@@ -820,22 +821,23 @@ export default function VoiceControls({
                     setGenderFilter("male");
                     handleGenderSelect("male");
                   }}
-                  className={`flex items-center justify-center gap-1.5 rounded-xl border py-1.5 px-2 text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 rounded-xl border py-2 px-2 text-xs font-bold transition-all cursor-pointer ${
                     genderFilter === "male"
-                      ? "border-orange-500 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 shadow-xs ring-1 ring-orange-500/20"
+                      ? "border-orange-500 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 shadow-xs ring-2 ring-orange-500/30"
                       : "border-slate-200/90 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-900/40 text-slate-600 dark:text-zinc-400 hover:border-orange-300"
                   }`}
                 >
-                  <div className="relative size-6 shrink-0 overflow-hidden rounded-full border border-blue-400/80 shadow-xs">
+                  <div className="relative size-5.5 shrink-0 overflow-hidden rounded-full border border-blue-400/80 shadow-xs">
                     <Image
                       src="/images/male-avatar.jpg"
                       alt="Male"
                       fill
                       className="object-cover"
-                      sizes="24px"
+                      sizes="22px"
                     />
                   </div>
                   <span>Male</span>
+                  {genderFilter === "male" && <span className="text-[10px] text-orange-500 font-black">✓</span>}
                 </button>
 
                 {/* Option 3: Female (small female avatar image) */}
@@ -845,22 +847,23 @@ export default function VoiceControls({
                     setGenderFilter("female");
                     handleGenderSelect("female");
                   }}
-                  className={`flex items-center justify-center gap-1.5 rounded-xl border py-1.5 px-2 text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 rounded-xl border py-2 px-2 text-xs font-bold transition-all cursor-pointer ${
                     genderFilter === "female"
-                      ? "border-orange-500 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 shadow-xs ring-1 ring-orange-500/20"
+                      ? "border-orange-500 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 shadow-xs ring-2 ring-orange-500/30"
                       : "border-slate-200/90 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-900/40 text-slate-600 dark:text-zinc-400 hover:border-orange-300"
                   }`}
                 >
-                  <div className="relative size-6 shrink-0 overflow-hidden rounded-full border border-pink-400/80 shadow-xs">
+                  <div className="relative size-5.5 shrink-0 overflow-hidden rounded-full border border-pink-400/80 shadow-xs">
                     <Image
                       src="/images/female-avatar.jpg"
                       alt="Female"
                       fill
                       className="object-cover"
-                      sizes="24px"
+                      sizes="22px"
                     />
                   </div>
                   <span>Female</span>
+                  {genderFilter === "female" && <span className="text-[10px] text-orange-500 font-black">✓</span>}
                 </button>
               </div>
 
@@ -889,8 +892,8 @@ export default function VoiceControls({
 
                 {/* Default 3 voice persons (scrollable when expanded) */}
                 <div
-                  className={`space-y-1.5 pt-1 pl-1 pr-1 ${
-                    showAllVoices ? "max-h-[210px] overflow-y-auto" : ""
+                  className={`space-y-2 pt-1 pl-1 pr-1 ${
+                    showAllVoices ? "max-h-[260px] overflow-y-auto" : ""
                   }`}
                 >
                   {visibleVoices.map((v) => {
@@ -915,19 +918,19 @@ export default function VoiceControls({
                             setSelectedGender(v.gender as "male" | "female");
                           }
                         }}
-                        className={`w-full flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left transition-all cursor-pointer border ${
+                        className={`w-full flex items-center justify-between gap-2.5 rounded-2xl p-2.5 text-left transition-all cursor-pointer border-2 ${
                           isSelected
-                            ? "border-orange-500 bg-white dark:bg-zinc-800 text-orange-600 dark:text-orange-400 font-bold shadow-xs ring-1 ring-orange-500/20"
-                            : "border-transparent bg-white/70 dark:bg-zinc-800/40 hover:bg-white dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 hover:border-slate-200 dark:hover:border-zinc-700"
+                            ? "border-orange-500 bg-orange-500/[0.08] dark:bg-orange-500/[0.14] shadow-sm ring-2 ring-orange-500/25"
+                            : "border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-800/60 hover:border-orange-300 dark:hover:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200"
                         }`}
                       >
-                        {/* Left Side: Male/Female Avatar with Selection Tick on top-left + Voice Info */}
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="relative size-8.5 shrink-0">
+                        {/* Left Side: Avatar with High-Visibility Checkmark + Voice Info */}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="relative size-10 shrink-0">
                             <div
-                              className={`relative size-8.5 overflow-hidden rounded-xl border transition-all shadow-xs ${
+                              className={`relative size-10 overflow-hidden rounded-xl border-2 transition-all shadow-xs ${
                                 isSelected
-                                  ? "border-orange-500 ring-2 ring-orange-500/20"
+                                  ? "border-orange-500 ring-2 ring-orange-500/30 scale-105"
                                   : "border-slate-200 dark:border-zinc-700"
                               }`}
                             >
@@ -940,30 +943,33 @@ export default function VoiceControls({
                                 alt={v.label}
                                 fill
                                 className="object-cover"
-                                sizes="34px"
+                                sizes="40px"
                               />
                             </div>
 
                             {/* Selection Tick on Male/Female Avatar (Left Side) */}
-                            <span
-                              className={`absolute -top-1 -left-1 z-10 flex size-4 items-center justify-center rounded-full text-[9px] font-black shadow-xs transition-all ${
-                                isSelected
-                                  ? "bg-orange-500 text-white ring-2 ring-white dark:ring-zinc-800"
-                                  : "bg-white/95 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 text-transparent"
-                              }`}
-                              aria-hidden="true"
-                            >
-                              ✓
-                            </span>
+                            {isSelected ? (
+                              <span
+                                className="absolute -top-1.5 -left-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-orange-500 text-white text-[11px] font-black shadow-md ring-2 ring-white dark:ring-zinc-900"
+                                aria-label="Selected Avatar"
+                              >
+                                ✓
+                              </span>
+                            ) : (
+                              <span
+                                className="absolute -top-1 -left-1 z-10 flex size-4 items-center justify-center rounded-full bg-white/90 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 text-transparent"
+                                aria-hidden="true"
+                              />
+                            )}
                           </div>
 
                           <div className="truncate">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">
+                              <span className={`text-xs font-black leading-tight ${isSelected ? "text-orange-600 dark:text-orange-400" : "text-slate-900 dark:text-white"}`}>
                                 Person {pNum}: {v.label.split(" ")[0]}
                               </span>
                               <span
-                                className={`text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded ${
+                                className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md ${
                                   v.gender === "female"
                                     ? "bg-pink-100 dark:bg-pink-950/80 text-pink-700 dark:text-pink-300"
                                     : "bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300"
@@ -978,42 +984,70 @@ export default function VoiceControls({
                           </div>
                         </div>
 
-                        {/* Right Side: Per-Voice Play / Stop Sample Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePlayVoicePreview(v);
-                          }}
-                          title={
-                            isPlayingThis || isLoadingThis
-                              ? `Stop ${v.label.split(" ")[0]} sample`
-                              : `Play ${v.label.split(" ")[0]} voice sample`
-                          }
-                          aria-label={
-                            isPlayingThis || isLoadingThis
-                              ? `Stop ${v.label} sample`
-                              : `Play ${v.label} sample`
-                          }
-                          className={`flex size-7.5 shrink-0 items-center justify-center rounded-full border transition-all cursor-pointer ${
-                            isPlayingThis || isLoadingThis
-                              ? "border-orange-500 bg-orange-500 text-white shadow-sm ring-2 ring-orange-500/25"
-                              : "border-orange-200/90 dark:border-orange-800/60 bg-orange-50/80 dark:bg-orange-950/40 text-[#ff5500] dark:text-orange-400 hover:bg-orange-500 hover:border-orange-500 hover:text-white shadow-2xs"
-                          }`}
-                        >
-                          {isLoadingThis ? (
-                            <span className="size-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-                          ) : isPlayingThis ? (
-                            <svg className="size-3.5" fill="currentColor" viewBox="0 0 24 24">
-                              <rect x="6" y="5" width="4" height="14" rx="1" />
-                              <rect x="14" y="5" width="4" height="14" rx="1" />
-                            </svg>
+                        {/* Right Side: EXPLICIT VISIBLE SELECT BUTTON + Sample Play Button */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isSelected ? (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-xl bg-orange-500 text-white px-2.5 sm:px-3 py-1.5 text-[11px] font-black shadow-xs tracking-tight"
+                              title="Currently selected voice avatar"
+                            >
+                              <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span>Selected</span>
+                            </span>
                           ) : (
-                            <svg className="size-3.5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                              <polygon points="6 4 20 12 6 20 6 4" />
-                            </svg>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onVoiceChange(v.id);
+                                setSelectedGender(v.gender as "male" | "female");
+                              }}
+                              className="inline-flex items-center gap-1 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 sm:px-3 py-1.5 text-[11px] font-bold text-slate-700 dark:text-zinc-200 hover:border-orange-500 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50/60 dark:hover:bg-orange-950/30 transition shadow-2xs cursor-pointer"
+                              title={`Select Person ${pNum} (${v.label.split(" ")[0]})`}
+                            >
+                              <span>Select</span>
+                            </button>
                           )}
-                        </button>
+
+                          {/* Per-Voice Play / Stop Sample Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePlayVoicePreview(v);
+                            }}
+                            title={
+                              isPlayingThis || isLoadingThis
+                                ? `Stop ${v.label.split(" ")[0]} sample`
+                                : `Play ${v.label.split(" ")[0]} voice sample`
+                            }
+                            aria-label={
+                              isPlayingThis || isLoadingThis
+                                ? `Stop ${v.label} sample`
+                                : `Play ${v.label} sample`
+                            }
+                            className={`flex size-8 shrink-0 items-center justify-center rounded-xl border transition-all cursor-pointer ${
+                              isPlayingThis || isLoadingThis
+                                ? "border-orange-500 bg-orange-500 text-white shadow-sm ring-2 ring-orange-500/25"
+                                : "border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/80 text-slate-600 dark:text-zinc-300 hover:border-orange-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/40 shadow-2xs"
+                            }`}
+                          >
+                            {isLoadingThis ? (
+                              <span className="size-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                            ) : isPlayingThis ? (
+                              <svg className="size-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                <rect x="6" y="5" width="4" height="14" rx="1" />
+                                <rect x="14" y="5" width="4" height="14" rx="1" />
+                              </svg>
+                            ) : (
+                              <svg className="size-3.5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                <polygon points="6 4 20 12 6 20 6 4" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
