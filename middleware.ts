@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { seoConfig } from '@/seo.config';
+import { sitemapChunkIds } from '@/lib/seo/sitemap';
 
 type CookieItem = {
   name: string;
@@ -9,11 +11,35 @@ type CookieItem = {
 
 /**
  * Next.js middleware — runs on every matched request.
- * 1. Refreshes the Supabase session cookie so it never silently expires.
- * 2. Redirects unauthenticated users away from protected routes.
+ * 1. Serves the parent `<sitemapindex>` at `/sitemap.xml` pointing to `/sitemap/0.xml`, `/sitemap/1.xml`, etc.
+ * 2. Refreshes the Supabase session cookie so it never silently expires.
+ * 3. Redirects unauthenticated users away from protected routes.
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (pathname === '/sitemap.xml') {
+    const ids = await sitemapChunkIds(seoConfig);
+    const xml = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+      ...ids.map(
+        ({ id }) =>
+          `  <sitemap>\n    <loc>${seoConfig.siteUrl}/sitemap/${id}.xml</loc>\n  </sitemap>`,
+      ),
+      '</sitemapindex>',
+      '',
+    ].join('\n');
+
+    return new NextResponse(xml, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=600',
+      },
+    });
+  }
+
   const isProtected = pathname.startsWith('/account');
 
   // Public pages, studio, marketing, and API routes pass through immediately with zero overhead
@@ -63,8 +89,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Only run middleware on protected routes to avoid per-request overhead on public pages & APIs.
+     * Only run middleware on protected routes & /sitemap.xml index to avoid per-request overhead on public pages & APIs.
      */
     '/account/:path*',
+    '/sitemap.xml',
   ],
 };

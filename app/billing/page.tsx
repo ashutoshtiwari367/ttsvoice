@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { PAID_FEATURES_CONTROL } from "@/config/control";
 import { pricingConfig, type PricingCurrency } from "@/config/pricingPlans";
 import { siteConfig } from "@/config/site";
-import AccountNavBar from "@/components/layout/AccountNavBar";
+import AdminPanelLayout from "@/components/layout/AdminPanelLayout";
 import {
   CheckIcon,
   CreditCardIcon,
@@ -362,15 +362,13 @@ export default function BillingSubscriptionPage() {
   const isPro = data.tier === "paid" || data.balance > 0;
 
   return (
-    <main className="relative min-h-screen text-slate-900 dark:text-zinc-100 pb-24">
+    <AdminPanelLayout activeTab="billing">
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
         strategy="lazyOnload"
       />
 
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-8">
-        <AccountNavBar />
-
+      <div className="space-y-6">
         {/* Page Title & Refresh */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-black/[0.06] dark:border-white/[0.08]">
           <div>
@@ -873,7 +871,7 @@ export default function BillingSubscriptionPage() {
           </div>
         </div>
       )}
-    </main>
+    </AdminPanelLayout>
   );
 }
 

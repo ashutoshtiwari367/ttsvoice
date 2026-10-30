@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { PAID_FEATURES_CONTROL } from "@/config/control";
 import { siteConfig } from "@/config/site";
-import AccountNavBar from "@/components/layout/AccountNavBar";
+import AdminPanelLayout from "@/components/layout/AdminPanelLayout";
 import {
   AlertCircleIcon,
   BookOpenIcon,
@@ -172,10 +172,8 @@ export default function HelpSupportPage() {
   };
 
   return (
-    <main className="relative min-h-screen text-slate-900 dark:text-zinc-100 pb-24">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-8">
-        {isLoggedIn && <AccountNavBar />}
-
+    <AdminPanelLayout activeTab="help">
+      <div className="space-y-6">
         {/* Header */}
         <div className="pb-6 border-b border-black/[0.06] dark:border-white/[0.08]">
           <div className="flex items-center gap-2.5">
@@ -537,7 +535,7 @@ export default function HelpSupportPage() {
           </div>
         </section>
       </div>
-    </main>
+    </AdminPanelLayout>
   );
 }
 

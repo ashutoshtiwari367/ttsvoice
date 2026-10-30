@@ -6,7 +6,7 @@ import React, { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { PAID_FEATURES_CONTROL } from "@/config/control";
-import AccountNavBar from "@/components/layout/AccountNavBar";
+import AdminPanelLayout from "@/components/layout/AdminPanelLayout";
 import { extractUsername, formatDisplayName } from "@/lib/user";
 import { getEmailAvatarLetter, clearAccountClientCaches } from "@/lib/userPreferences";
 import {
@@ -252,10 +252,8 @@ export default function MyProfilePage() {
   const avatarLetter = getEmailAvatarLetter(user.email);
 
   return (
-    <main className="relative min-h-screen text-slate-900 dark:text-zinc-100 pb-24">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 pt-8">
-        <AccountNavBar />
-
+    <AdminPanelLayout activeTab="profile">
+      <div className="space-y-6">
         {/* Profile Identity Card */}
         <section className="rounded-3xl border border-black/[0.08] dark:border-white/[0.08] bg-white/80 dark:bg-white/[0.03] p-6 sm:p-8 backdrop-blur-xl shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -687,7 +685,7 @@ export default function MyProfilePage() {
           </div>
         </div>
       </div>
-    </main>
+    </AdminPanelLayout>
   );
 }
 

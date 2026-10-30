@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PAID_FEATURES_CONTROL } from "@/config/control";
-import AccountNavBar from "@/components/layout/AccountNavBar";
+import AdminPanelLayout from "@/components/layout/AdminPanelLayout";
 import { getEmailAvatarLetter } from "@/lib/userPreferences";
 import {
   CheckIcon,
@@ -143,13 +143,10 @@ export default function AccountPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#f7f7f8] dark:bg-[#0e0f12] text-zinc-900 dark:text-zinc-100 font-sans pb-20 transition-colors">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
-        {/* Navigation Bar */}
-        <AccountNavBar />
-
-        {/* ChatGPT Style Top Header Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 px-5 rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 shadow-xs mb-6">
+    <AdminPanelLayout activeTab="overview">
+      <div className="space-y-6">
+        {/* Top Header Card */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 px-5 rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 shadow-xs">
           <div className="flex items-center gap-3.5">
             <div className="size-11 rounded-xl bg-gradient-to-br from-[#ff6a1f] to-[#ff4400] text-white flex items-center justify-center text-lg font-black uppercase shadow-xs">
               {initial}
@@ -206,101 +203,69 @@ export default function AccountPage() {
           </div>
         </div>
 
-        {/* ChatGPT Style Settings Container: Left Sidebar Tabs + Right Content Panel */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Navigation Sidebar */}
-          <aside className="lg:col-span-3 rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 p-2 shadow-xs">
-            <nav className="flex flex-row lg:flex-col gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none" aria-label="Account Settings Tabs">
-              <button
-                type="button"
-                onClick={() => setActiveTab("overview")}
-                className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition cursor-pointer text-left whitespace-nowrap border ${
-                  activeTab === "overview"
-                    ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border-orange-500/25 shadow-2xs"
-                    : "text-zinc-600 dark:text-zinc-400 hover:bg-orange-500/5 hover:text-[#ff5500] dark:hover:text-orange-400 border-transparent"
-                }`}
-              >
-                <SparklesIcon size={15} className={activeTab === "overview" ? "text-orange-500" : "text-zinc-400"} />
-                <span>Overview</span>
-              </button>
+        {/* Sub-Tabs Selector */}
+        <div className="flex items-center gap-1.5 border-b border-zinc-200 dark:border-zinc-800 pb-3 overflow-x-auto scrollbar-none">
+          <button
+            type="button"
+            onClick={() => setActiveTab("overview")}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+              activeTab === "overview"
+                ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border border-orange-500/25 shadow-xs"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            }`}
+          >
+            Overview
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("usage")}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+              activeTab === "usage"
+                ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border border-orange-500/25 shadow-xs"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            }`}
+          >
+            Usage &amp; Quota
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("profile")}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+              activeTab === "profile"
+                ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border border-orange-500/25 shadow-xs"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            }`}
+          >
+            Profile &amp; ID
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("plan")}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+              activeTab === "plan"
+                ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border border-orange-500/25 shadow-xs"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            }`}
+          >
+            Plan &amp; Validity
+          </button>
+          {PAID_FEATURES_CONTROL.enabled && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("billing")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                activeTab === "billing"
+                  ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border border-orange-500/25 shadow-xs"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+              }`}
+            >
+              Invoices &amp; Orders
+            </button>
+          )}
+        </div>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab("usage")}
-                className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition cursor-pointer text-left whitespace-nowrap border ${
-                  activeTab === "usage"
-                    ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border-orange-500/25 shadow-2xs"
-                    : "text-zinc-600 dark:text-zinc-400 hover:bg-orange-500/5 hover:text-[#ff5500] dark:hover:text-orange-400 border-transparent"
-                }`}
-              >
-                <CrownIcon size={15} className={activeTab === "usage" ? "text-orange-500" : "text-zinc-400"} />
-                <span>Usage &amp; Quota</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("profile")}
-                className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition cursor-pointer text-left whitespace-nowrap border ${
-                  activeTab === "profile"
-                    ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border-orange-500/25 shadow-2xs"
-                    : "text-zinc-600 dark:text-zinc-400 hover:bg-orange-500/5 hover:text-[#ff5500] dark:hover:text-orange-400 border-transparent"
-                }`}
-              >
-                <UserIcon size={15} className={activeTab === "profile" ? "text-orange-500" : "text-zinc-400"} />
-                <span>Profile &amp; ID</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("plan")}
-                className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition cursor-pointer text-left whitespace-nowrap border ${
-                  activeTab === "plan"
-                    ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border-orange-500/25 shadow-2xs"
-                    : "text-zinc-600 dark:text-zinc-400 hover:bg-orange-500/5 hover:text-[#ff5500] dark:hover:text-orange-400 border-transparent"
-                }`}
-              >
-                <ShieldIcon size={15} className={activeTab === "plan" ? "text-orange-500" : "text-zinc-400"} />
-                <span>Plan &amp; Validity</span>
-              </button>
-
-              {PAID_FEATURES_CONTROL.enabled && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("billing")}
-                  className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition cursor-pointer text-left whitespace-nowrap border ${
-                    activeTab === "billing"
-                      ? "bg-orange-500/10 text-[#ff5500] dark:text-orange-400 border-orange-500/25 shadow-2xs"
-                      : "text-zinc-600 dark:text-zinc-400 hover:bg-orange-500/5 hover:text-[#ff5500] dark:hover:text-orange-400 border-transparent"
-                  }`}
-                >
-                  <FileTextIcon size={15} className={activeTab === "billing" ? "text-orange-500" : "text-zinc-400"} />
-                  <span>Invoices &amp; Orders</span>
-                </button>
-              )}
-            </nav>
-
-            {/* Quick Balance Status in Sidebar */}
-            <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 px-3 hidden lg:block">
-              <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
-                <span>Remaining</span>
-                <span className="font-bold text-zinc-900 dark:text-white">
-                  {remainingChars.toLocaleString()}
-                </span>
-              </div>
-              <div className="mt-2 h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-orange-500 transition-all duration-300 rounded-full"
-                  style={{ width: `${Math.max(5, 100 - usagePercent)}%` }}
-                />
-              </div>
-              <span className="mt-1.5 block text-[10px] text-zinc-400">
-                {totalChars.toLocaleString()} chars total allowance
-              </span>
-            </div>
-          </aside>
-
-          {/* Right Main Content Area */}
-          <div className="lg:col-span-9 space-y-6">
+        {/* Content of Active Sub-Tab */}
+        <div className="space-y-6">
             {/* TAB 1: OVERVIEW */}
             {activeTab === "overview" && (
               <div className="rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 p-6 sm:p-7 shadow-xs space-y-6">
@@ -793,10 +758,9 @@ export default function AccountPage() {
               </div>
             )}
           </div>
-        </div>
 
-        {/* Minimal ChatGPT Style Bottom Support Bar */}
-        <div className="mt-8 rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+        {/* Minimal Claude Style Bottom Support Bar */}
+        <div className="rounded-2xl bg-white dark:bg-[#18191e] border border-zinc-200 dark:border-zinc-800 px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500 dark:text-zinc-400">
           <p className="flex items-center gap-1.5">
             <span>💡</span>
             <span>Need enterprise voice quotas or custom model tuning?</span>
@@ -813,6 +777,6 @@ export default function AccountPage() {
           </Link>
         </div>
       </div>
-    </main>
+    </AdminPanelLayout>
   );
 }

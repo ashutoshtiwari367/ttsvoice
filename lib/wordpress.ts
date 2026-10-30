@@ -1,3 +1,6 @@
+import { admin } from "@/lib/supabase/admin";
+import { siteConfig } from "@/config/site";
+
 const WP_URL = (
   process.env.WORDPRESS_URL ||
   process.env.NEXT_PUBLIC_WORDPRESS_URL ||
@@ -27,6 +30,7 @@ export interface WPPost {
 export interface WPSitemapPost {
   id: number;
   slug: string;
+  title?: string;
   isoDate: string;
   isoModified: string;
 }
@@ -412,7 +416,7 @@ export async function getAllPostsForSitemap(options?: {
         order: "desc",
         per_page: 100,
         page,
-        _fields: "id,slug,date,date_gmt,modified,modified_gmt",
+        _fields: "id,slug,title,date,date_gmt,modified,modified_gmt",
       },
       10_000
     );
@@ -432,6 +436,7 @@ export async function getAllPostsForSitemap(options?: {
       collected.push({
         id: Number(raw.id),
         slug,
+        title: stripHtml(raw?.title?.rendered || slug),
         isoDate: toValidIsoDate(raw.date_gmt, raw.date),
         isoModified: toValidIsoDate(
           raw.modified_gmt || raw.date_gmt,
@@ -448,4 +453,89 @@ export async function getAllPostsForSitemap(options?: {
 
   sitemapMemoryCache = { at: now, items: collected };
   return collected;
+}
+
+/**
+ * Syncs live WordPress posts into Supabase `tt_blog_metadata` (and logs to `tt_blog_meta_sync_log`).
+ */
+export async function syncBlogEntriesToSupabase(
+  posts?: WPSitemapPost[]
+): Promise<{ fetched: number; upserted: number }> {
+  const brandId = siteConfig.brandId || "freettsvoice";
+  const startedAt = new Date().toISOString();
+  const items = posts ?? (await getAllPostsForSitemap({ forceFresh: true }));
+
+  if (items.length === 0) {
+    return { fetched: 0, upserted: 0 };
+  }
+
+  const nowIso = new Date().toISOString();
+  const rows = items.map((p) => ({
+    brand_website_id: brandId,
+    wp_post_id: p.id,
+    slug: p.slug,
+    status: "publish",
+    title: p.title || p.slug,
+    published_at: p.isoDate,
+    lastmod_at: p.isoModified,
+    is_deleted: false,
+    synced_at: nowIso,
+  }));
+
+  const { error } = await admin
+    .from("tt_blog_metadata")
+    .upsert(rows, { onConflict: "brand_website_id,wp_post_id" });
+
+  await admin.from("tt_blog_meta_sync_log").insert({
+    brand_website_id: brandId,
+    started_at: startedAt,
+    finished_at: new Date().toISOString(),
+    fetched_count: items.length,
+    upserted_count: error ? 0 : rows.length,
+    deleted_count: 0,
+    status: error ? "error" : "success",
+    message: error ? error.message : "",
+  });
+
+  return { fetched: items.length, upserted: error ? 0 : rows.length };
+}
+
+/**
+ * Reads blog sitemap entries (`slug` and `lastModified`) from Supabase `tt_blog_metadata`.
+ * Automatically syncs from WordPress if the table has no active rows yet.
+ */
+export async function getSupabaseBlogEntries(): Promise<
+  { slug: string; lastModified?: string }[]
+> {
+  const brandId = siteConfig.brandId || "freettsvoice";
+
+  try {
+    const { data, error } = await admin
+      .from("tt_blog_metadata")
+      .select("slug, lastmod_at, published_at, review_status")
+      .eq("brand_website_id", brandId)
+      .eq("status", "publish")
+      .eq("is_deleted", false)
+      .neq("review_status", "hold")
+      .order("lastmod_at", { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      return data.map((row) => ({
+        slug: String(row.slug).replace(/^\/+|\/+$/g, ""),
+        lastModified: row.lastmod_at || row.published_at || undefined,
+      }));
+    }
+  } catch (err) {
+    console.warn("[Supabase Blog Sitemap] Failed reading tt_blog_metadata:", err);
+  }
+
+  // Fallback: fetch from WordPress and save to Supabase
+  const wpPosts = await getAllPostsForSitemap();
+  if (wpPosts.length > 0) {
+    await syncBlogEntriesToSupabase(wpPosts).catch(() => {});
+  }
+  return wpPosts.map((p) => ({
+    slug: p.slug.replace(/^\/+|\/+$/g, ""),
+    lastModified: p.isoModified || p.isoDate,
+  }));
 }

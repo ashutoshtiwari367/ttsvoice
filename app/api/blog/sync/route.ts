@@ -4,6 +4,7 @@ import {
   clearWordPressCache,
   getAllPostsForSitemap,
   getWordPressBaseUrl,
+  syncBlogEntriesToSupabase,
 } from "@/lib/wordpress";
 
 export const runtime = "nodejs";
@@ -23,17 +24,19 @@ async function handleSync(req: NextRequest) {
   // 1. Purge in-memory WordPress cache
   clearWordPressCache();
 
-  // 2. Revalidate Next.js App Router blog & sitemap paths
+  // 2. Pull fresh posts directly from WordPress CMS & save to Supabase `tt_blog_metadata`
+  const posts = await getAllPostsForSitemap({ forceFresh: true });
+  const dbSync = await syncBlogEntriesToSupabase(posts);
+
+  // 3. Revalidate Next.js App Router blog & sitemap paths
   try {
     revalidatePath("/blog");
     revalidatePath("/blog/[slug]", "page");
     revalidatePath("/sitemap.xml");
+    revalidatePath("/sitemap/[__metadata_id__]", "page");
   } catch {
     // ignore if called outside static cache context
   }
-
-  // 3. Pull fresh posts directly from WordPress CMS
-  const posts = await getAllPostsForSitemap({ forceFresh: true });
 
   return NextResponse.json(
     {
@@ -41,6 +44,7 @@ async function handleSync(req: NextRequest) {
       cmsUrl: getWordPressBaseUrl(),
       syncedAt: new Date().toISOString(),
       postCount: posts.length,
+      supabaseUpserted: dbSync.upserted,
       latestPosts: posts.slice(0, 10).map((p) => ({
         id: p.id,
         slug: p.slug,

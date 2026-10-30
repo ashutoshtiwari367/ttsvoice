@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { HistoryItem, HistoryResponse } from "@/app/api/history/route";
 import { ALL_LANGUAGES_CATALOG } from "@/lib/tts/catalog";
-import AccountNavBar from "@/components/layout/AccountNavBar";
+import AdminPanelLayout from "@/components/layout/AdminPanelLayout";
 import {
   DownloadIcon,
   FilterIcon,
@@ -216,10 +216,8 @@ export default function HistoryPage() {
   }
 
   return (
-    <main className="relative min-h-screen text-slate-900 dark:text-zinc-100 transition-colors pb-24 overflow-hidden">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-8">
-        {userType !== "guest" && <AccountNavBar />}
-
+    <AdminPanelLayout activeTab="history">
+      <div className="space-y-6">
         {/* Header & Retention Summary */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-black/[0.06] dark:border-white/[0.08]">
           <div>
@@ -552,6 +550,6 @@ export default function HistoryPage() {
           </div>
         )}
       </div>
-    </main>
+    </AdminPanelLayout>
   );
 }
