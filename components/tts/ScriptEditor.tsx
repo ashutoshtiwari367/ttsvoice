@@ -45,18 +45,26 @@ export default function ScriptEditor({
   onChange,
   onClear,
   userType = "guest",
-  totalAllowance = 500,
+  totalAllowance,
   usedChars = 0,
-  remainingChars = 500,
-  maxCharacters = 500,
+  remainingChars,
+  maxCharacters,
   tier = "anon",
   balance = 0,
 }: ScriptEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const backdropRef = useRef<HTMLDivElement | null>(null);
 
+  // Dynamic limits based on user type:
+  // - Guest Users (Without Login): 500 characters
+  // - Registered Users (With Login): 1,000 characters
+  const isGuest = userType === "guest";
+  const userTypeLimit = isGuest ? 500 : 1000;
+  const effectiveMax = maxCharacters !== undefined ? maxCharacters : userTypeLimit;
+  const effectiveRemaining = remainingChars !== undefined ? remainingChars : userTypeLimit;
+
   // Allowed characters for the current request
-  const allowedLimit = Math.max(0, Math.min(maxCharacters, remainingChars));
+  const allowedLimit = Math.max(0, Math.min(effectiveMax, effectiveRemaining));
   const isOverLimit = text.length > allowedLimit;
   const extraChars = isOverLimit ? text.length - allowedLimit : 0;
 
@@ -265,23 +273,27 @@ export default function ScriptEditor({
           </div>
         )}
 
-        {/* ── 3. Info Alert Banner ── */}
-        <div className="flex items-center gap-2 rounded-2xl bg-amber-500/[0.08] dark:bg-amber-500/[0.05] border border-amber-500/20 p-3 sm:px-4 text-xs font-semibold text-slate-800 dark:text-amber-200">
-          <span className="text-base shrink-0">💡</span>
-          <span>
-            {userType === "guest"
-              ? CHAR_LIMIT_CONTROL.guestInfoTipText
-              : CHAR_LIMIT_CONTROL.loggedInInfoTipText}
-          </span>
-          {userType === "guest" && (
+        {/* ── 3. Info Alert Banner (Logged-in "Your free account audio history is saved automatically for 24 hours" commented out) ── */}
+        {userType === "guest" && (
+          <div className="flex items-center gap-2 rounded-2xl bg-amber-500/[0.08] dark:bg-amber-500/[0.05] border border-amber-500/20 p-3 sm:px-4 text-xs font-semibold text-slate-800 dark:text-amber-200">
+            <span className="text-base shrink-0">💡</span>
+            <span>{CHAR_LIMIT_CONTROL.guestInfoTipText}</span>
             <Link
               href={CHAR_LIMIT_CONTROL.primaryLoginHref}
               className="ml-auto shrink-0 font-extrabold text-[#ff5500] hover:underline"
             >
               {CHAR_LIMIT_CONTROL.guestInfoTipActionLabel}
             </Link>
-          )}
-        </div>
+          </div>
+        )}
+        {/*
+        {userType !== "guest" && (
+          <div className="flex items-center gap-2 rounded-2xl bg-amber-500/[0.08] dark:bg-amber-500/[0.05] border border-amber-500/20 p-3 sm:px-4 text-xs font-semibold text-slate-800 dark:text-amber-200">
+            <span className="text-base shrink-0">💡</span>
+            <span>{CHAR_LIMIT_CONTROL.loggedInInfoTipText}</span>
+          </div>
+        )}
+        */}
       </div>
     </div>
   );

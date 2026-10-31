@@ -8,10 +8,13 @@ import { AUDIO_CONTROL_SETTINGS, CHAR_LIMIT_CONTROL } from "@/config/control";
 import { ALL_LANGUAGES_CATALOG } from "@/lib/tts/catalog";
 import {
   getCachedAllowance,
+  getCachedAuthUser,
   getUserPreferences,
   setCachedAllowance,
+  setCachedAuthUser,
 } from "@/lib/userPreferences";
 import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 import AdSpacePromo from "./AdSpacePromo";
 import ScriptEditor from "./ScriptEditor";
 import VoiceControls from "./VoiceControls";
@@ -61,6 +64,7 @@ export default function TTSWorkspace() {
   const [notice, setNotice] = useState<string | null>(null);
   const [noticeAudio, setNoticeAudio] = useState<string | null>(null);
   const [userAllowance, setUserAllowance] = useState<UserAllowanceState | null>(null);
+  const [authUser, setAuthUser] = useState<User | null>(null);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
 
   const resultRef = useRef<HTMLDivElement | null>(null);
@@ -70,7 +74,15 @@ export default function TTSWorkspace() {
     if (allowanceInFlightRef.current) return;
     allowanceInFlightRef.current = true;
     try {
-      const res = await fetch("/api/user/credits", { cache: "no-store" });
+      const supabase = createClient();
+      const { data: sessData } = await supabase.auth.getSession();
+      const token = sessData.session?.access_token;
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const res = await fetch("/api/user/credits", { headers, cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         setUserAllowance(data);
@@ -84,16 +96,31 @@ export default function TTSWorkspace() {
   };
 
   useEffect(() => {
-    // Instant 0ms allowance hydration from local cache to avoid 2s guest-limit flash
-    const cached = getCachedAllowance<UserAllowanceState>();
-    if (cached) {
-      setUserAllowance(cached);
+    // 1. Instant 0ms hydration from local cache
+    const cachedUser = getCachedAuthUser();
+    if (cachedUser) {
+      setAuthUser(cachedUser);
+    }
+    const cachedAllowance = getCachedAllowance<UserAllowanceState>();
+    if (cachedAllowance) {
+      setUserAllowance(cachedAllowance);
     }
 
-    fetchAllowance();
     const supabase = createClient();
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        setAuthUser(data.user);
+        setCachedAuthUser(data.user);
+      }
+    });
+
+    fetchAllowance();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "INITIAL_SESSION") return;
+      const nextUser = session?.user ?? null;
+      setAuthUser(nextUser);
+      setCachedAuthUser(nextUser);
       if (event === "SIGNED_OUT") {
         setUserAllowance(null);
         setCachedAllowance(null);
@@ -101,6 +128,8 @@ export default function TTSWorkspace() {
       fetchAllowance();
     });
     const handleAuthSync = () => {
+      const latestCachedUser = getCachedAuthUser();
+      setAuthUser(latestCachedUser);
       const latestCached = getCachedAllowance<UserAllowanceState>();
       if (!latestCached) {
         setUserAllowance(null);
@@ -182,15 +211,17 @@ export default function TTSWorkspace() {
     !!generatedVoice &&
     generatedVoice.id !== currentVoiceEntry.id;
 
-  // Character calculations
+  // Character calculations:
+  // - Without Login (Guest): 500 characters
+  // - With Login (Registered User): 1,000 characters
+  const isLoggedIn = !!authUser || userAllowance?.isAuthenticated === true || (userAllowance && userAllowance.userType !== "guest");
   const isPremium = userAllowance?.isPremium === true;
-  const isAuthenticated = userAllowance?.isAuthenticated === true;
-  const defaultFreeLimit = isAuthenticated ? 1000 : 500;
+  const defaultUserLimit = isLoggedIn ? 1000 : 500;
 
   const singleCap = isPremium
     ? (userAllowance?.reqCap ?? 10000)
-    : (userAllowance?.singleReqCap ?? defaultFreeLimit);
-  const remainingAllowance = userAllowance?.remainingChars ?? defaultFreeLimit;
+    : (userAllowance?.singleReqCap ?? defaultUserLimit);
+  const remainingAllowance = userAllowance?.remainingChars ?? defaultUserLimit;
   const allowedLimit = Math.max(0, Math.min(singleCap, remainingAllowance));
 
   const isOverLimit = text.length > allowedLimit;
@@ -213,9 +244,17 @@ export default function TTSWorkspace() {
     setNoticeAudio(null);
 
     try {
+      const supabase = createClient();
+      const { data: sessData } = await supabase.auth.getSession();
+      const token = sessData.session?.access_token;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           text,
           lang,
@@ -337,12 +376,12 @@ export default function TTSWorkspace() {
             text={text}
             onChange={setText}
             onClear={clearText}
-            userType={userAllowance?.userType ?? "guest"}
-            totalAllowance={userAllowance?.totalAllowance ?? defaultFreeLimit}
+            userType={isLoggedIn ? (isPremium ? "premium" : "free") : "guest"}
+            totalAllowance={userAllowance?.totalAllowance ?? defaultUserLimit}
             usedChars={userAllowance?.usedChars ?? 0}
-            remainingChars={userAllowance?.remainingChars ?? defaultFreeLimit}
-            maxCharacters={singleCap}
-            tier={userAllowance?.tier ?? "anon"}
+            remainingChars={userAllowance?.remainingChars ?? defaultUserLimit}
+            maxCharacters={allowedLimit}
+            tier={userAllowance?.tier ?? (isLoggedIn ? "free" : "anon")}
             balance={userAllowance?.balance ?? 0}
           />
 
@@ -359,7 +398,7 @@ export default function TTSWorkspace() {
             extraChars={extraChars}
             remainingAllowance={remainingAllowance}
             onClick={generateSpeech}
-            userType={userAllowance?.userType ?? "guest"}
+            userType={isLoggedIn ? (isPremium ? "premium" : "free") : "guest"}
           />
 
           {/* Error Message Alert */}

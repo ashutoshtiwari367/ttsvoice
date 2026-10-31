@@ -26,7 +26,7 @@ export default function FAQ() {
     <section id="faq" className="relative py-20 sm:py-24 border-t border-black/[0.06] dark:border-white/[0.08] overflow-hidden">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
         {/* Eyebrow */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-[0.2em] text-[#ff5500] dark:text-orange-400">
+        <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3.5 py-1 text-xs font-bold text-[#ff5500] dark:text-orange-400">
           <span>FAQ</span>
         </div>
 

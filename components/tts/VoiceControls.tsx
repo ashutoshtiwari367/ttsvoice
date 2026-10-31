@@ -599,7 +599,7 @@ export default function VoiceControls({
             {/* 1. Select Language (Dropdown with Search Bar Inside) */}
             <div ref={langDropdownRef} className="relative">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-zinc-200">
                   <span className="flex size-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 text-[11px] font-bold">
                     🌐
                   </span>
@@ -702,7 +702,7 @@ export default function VoiceControls({
                   </div>
 
                   <div className="flex items-center justify-between px-1.5 pb-1.5 mb-1 border-b border-slate-100 dark:border-zinc-800">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500">
                       {normalizedLangQuery
                         ? `Matching (${filteredLanguages.length})`
                         : `All Languages (${filteredLanguages.length})`}
@@ -783,7 +783,7 @@ export default function VoiceControls({
             {/* 2. Select Voice Avatar & Person */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-zinc-200">
                   <span className="flex size-5 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-950/60 text-[#ff5500] text-[11px] font-bold">
                     👤
                   </span>
@@ -870,7 +870,7 @@ export default function VoiceControls({
               {/* Voice Persons Box (Default 3 shown, expandable if more) */}
               <div className="mt-3 rounded-2xl border border-slate-200/90 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/50 p-2.5 shadow-xs">
                 <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-200/60 dark:border-zinc-800/80 mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400">
                     Voice Persons ({visibleVoices.length}
                     {hasMoreVoices && !showAllVoices ? `/${filteredVoices.length}` : ""})
                   </span>
@@ -924,43 +924,44 @@ export default function VoiceControls({
                             : "border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-800/60 hover:border-orange-300 dark:hover:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200"
                         }`}
                       >
-                        {/* Left Side: Avatar with High-Visibility Checkmark + Voice Info */}
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="relative size-10 shrink-0">
-                            <div
-                              className={`relative size-10 overflow-hidden rounded-xl border-2 transition-all shadow-xs ${
-                                isSelected
-                                  ? "border-orange-500 ring-2 ring-orange-500/30 scale-105"
-                                  : "border-slate-200 dark:border-zinc-700"
-                              }`}
-                            >
-                              <Image
-                                src={
-                                  v.gender === "female"
-                                    ? "/images/female-avatar.jpg"
-                                    : "/images/male-avatar.jpg"
-                                }
-                                alt={v.label}
-                                fill
-                                className="object-cover"
-                                sizes="40px"
-                              />
-                            </div>
-
-                            {/* Selection Tick on Male/Female Avatar (Left Side) */}
+                        {/* Left Side: Avatar Selection Icon (to the side) + Avatar + Voice Info */}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {/* Avatar Selection Icon (placed cleanly to the side of the avatar, not overlapping on top) */}
+                          <div className="flex size-5 shrink-0 items-center justify-center">
                             {isSelected ? (
                               <span
-                                className="absolute -top-1.5 -left-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-orange-500 text-white text-[11px] font-black shadow-md ring-2 ring-white dark:ring-zinc-900"
+                                className="flex size-5 items-center justify-center rounded-full bg-orange-500 text-white text-[11px] font-black shadow-xs ring-2 ring-orange-500/25"
                                 aria-label="Selected Avatar"
                               >
                                 ✓
                               </span>
                             ) : (
                               <span
-                                className="absolute -top-1 -left-1 z-10 flex size-4 items-center justify-center rounded-full bg-white/90 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 text-transparent"
+                                className="size-4.5 rounded-full border-2 border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-800"
                                 aria-hidden="true"
                               />
                             )}
+                          </div>
+
+                          {/* Avatar Image (clean and fully visible, without any overlapping icons) */}
+                          <div
+                            className={`relative size-10 shrink-0 overflow-hidden rounded-xl border-2 transition-all shadow-xs ${
+                              isSelected
+                                ? "border-orange-500 ring-2 ring-orange-500/30 scale-105"
+                                : "border-slate-200 dark:border-zinc-700"
+                            }`}
+                          >
+                            <Image
+                              src={
+                                v.gender === "female"
+                                  ? "/images/female-avatar.jpg"
+                                  : "/images/male-avatar.jpg"
+                              }
+                              alt={v.label}
+                              fill
+                              className="object-cover"
+                              sizes="40px"
+                            />
                           </div>
 
                           <div className="truncate">
@@ -969,13 +970,13 @@ export default function VoiceControls({
                                 Person {pNum}: {v.label.split(" ")[0]}
                               </span>
                               <span
-                                className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md ${
+                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
                                   v.gender === "female"
                                     ? "bg-pink-100 dark:bg-pink-950/80 text-pink-700 dark:text-pink-300"
                                     : "bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300"
                                 }`}
                               >
-                                {v.gender}
+                                {v.gender === "female" ? "Female" : "Male"}
                               </span>
                             </div>
                             <div className="text-[10px] text-slate-500 dark:text-zinc-400 truncate mt-0.5">
@@ -1069,7 +1070,7 @@ export default function VoiceControls({
 
             {/* 3. Speaking Style / Mode */}
             <div>
-              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200 mb-2.5">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-zinc-200 mb-2.5">
                 <span className="flex size-5 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-600 text-[11px] font-bold">
                   📶
                 </span>
@@ -1164,7 +1165,7 @@ export default function VoiceControls({
             {/* 1. Speech Speed */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-zinc-200">
                   <span className="flex size-5 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-950/60 text-[#ff5500] text-[11px] font-bold">
                     ⏱️
                   </span>
@@ -1196,7 +1197,7 @@ export default function VoiceControls({
             {/* 2. Audio Pitch / Tone */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-zinc-200">
                   <span className="flex size-5 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-600 text-[11px] font-bold">
                     🎵
                   </span>
@@ -1227,7 +1228,7 @@ export default function VoiceControls({
             {/* Audio Volume / Gain */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-zinc-200">
                   <span className="flex size-5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 text-[11px] font-bold">
                     🔊
                   </span>
@@ -1257,7 +1258,7 @@ export default function VoiceControls({
 
             {/* Output Format */}
             <div>
-              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200 mb-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-zinc-200 mb-2">
                 <span className="flex size-5 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-950/60 text-orange-600 text-[11px] font-bold">
                   💿
                 </span>
@@ -1284,7 +1285,7 @@ export default function VoiceControls({
 
             {/* Sample Rate */}
             <div>
-              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200 mb-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-zinc-200 mb-2">
                 <span className="flex size-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 text-[11px] font-bold">
                   ⚡
                 </span>
@@ -1389,7 +1390,7 @@ export default function VoiceControls({
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800/80">
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200">
+                  <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
                     Saved Templates
                   </span>
                   <span className="text-[10px] font-bold bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 px-2 py-0.5 rounded-full">
@@ -1442,7 +1443,7 @@ export default function VoiceControls({
             {/* Quick Favorite Voices Strip */}
             {favoriteVoices.length > 0 && (
               <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-2.5 space-y-1.5">
-                <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                <div className="flex items-center justify-between text-[11px] font-bold text-amber-600 dark:text-amber-400">
                   <span>★ Favorite Voices ({favoriteVoices.length})</span>
                   <Link href="/saved-voices" className="hover:underline">
                     Manage →
@@ -1504,7 +1505,7 @@ export default function VoiceControls({
                             {tpl.name}
                           </span>
                           {tpl.isCustom && (
-                            <span className="text-[8px] font-black uppercase px-1 py-0.2 rounded bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 shrink-0">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400 shrink-0">
                               Custom
                             </span>
                           )}
@@ -1646,7 +1647,7 @@ export default function VoiceControls({
 
             {/* Current Settings Preview */}
             <div className="my-3.5 rounded-xl border border-slate-200/80 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/50 p-2.5">
-              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-zinc-500 mb-1.5">
+              <div className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 mb-1.5">
                 Current Settings Preview:
               </div>
               <div className="flex items-center justify-between gap-2">
@@ -1670,13 +1671,13 @@ export default function VoiceControls({
                         {currentVoiceObj.label.split(" ")[0]}
                       </span>
                       <span
-                        className={`text-[8px] font-black uppercase px-1 py-0.2 rounded ${
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                           selectedGender === "female"
                             ? "bg-pink-100 dark:bg-pink-950/80 text-pink-700 dark:text-pink-300"
                             : "bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300"
                         }`}
                       >
-                        {selectedGender === "female" ? "Fem" : "Male"}
+                        {selectedGender === "female" ? "Female" : "Male"}
                       </span>
                     </div>
                     <div className="text-[10px] text-slate-500 dark:text-zinc-400 truncate">

@@ -556,7 +556,7 @@ export default function SavedVoicesPage() {
                   <div>
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#ff5500] dark:text-orange-400">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 text-[10px] font-bold text-[#ff5500] dark:text-orange-400">
                           {tpl.isCustom ? "Custom Preset" : "Studio Preset"}
                         </span>
                         <h3 className="mt-2 text-base font-extrabold text-slate-900 dark:text-white">

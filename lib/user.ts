@@ -23,18 +23,23 @@ export function extractUsername(email: string | null | undefined): string {
 }
 
 /**
- * Returns a human-friendly display name (capitalized).
+ * Returns a human-friendly display name (properly capitalized Title Case).
+ * Converts "ASHU" -> "Ashu", "ashutoshtiwari" -> "Ashutoshtiwari",
+ * "ashutosh_tiwari" -> "Ashutosh Tiwari", "JOHN DOE" -> "John Doe".
  */
-export function formatDisplayName(username: string): string {
-  if (!username) return "User";
+export function formatDisplayName(username: string | null | undefined): string {
+  if (!username || typeof username !== "string") return "User";
 
-  // Split on dots, underscores, or hyphens if any
-  const parts = username.split(/[._-]+/).filter(Boolean);
+  const trimmed = username.trim();
+  if (!trimmed) return "User";
+
+  // Split on dots, underscores, hyphens, or spaces if any
+  const parts = trimmed.split(/[._\-\s]+/).filter(Boolean);
   if (parts.length > 1) {
     return parts
       .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
       .join(" ");
   }
 
-  return username.charAt(0).toUpperCase() + username.slice(1);
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
 }

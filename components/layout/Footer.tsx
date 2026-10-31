@@ -38,7 +38,7 @@ export default function Footer() {
 
           {/* Product */}
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white">
               Product
             </h3>
             <ul className="mt-4 space-y-2.5 text-xs">
@@ -67,7 +67,7 @@ export default function Footer() {
 
           {/* Account */}
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white">
               Account
             </h3>
             <ul className="mt-4 space-y-2.5 text-xs">
@@ -86,7 +86,7 @@ export default function Footer() {
 
           {/* Company */}
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white">
               Company
             </h3>
             <ul className="mt-4 space-y-2.5 text-xs">
@@ -105,7 +105,7 @@ export default function Footer() {
 
           {/* Legal & Policies */}
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white">
               Legal &amp; Policies
             </h3>
             <ul className="mt-4 space-y-2.5 text-xs">

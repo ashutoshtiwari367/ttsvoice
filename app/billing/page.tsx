@@ -429,7 +429,7 @@ export default function BillingSubscriptionPage() {
 
             <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4 pt-5 border-t border-black/[0.06] dark:border-white/[0.08]">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500">
                   Available Credits
                 </span>
                 <p className="mt-1 text-xl font-black text-slate-950 dark:text-white">
@@ -438,7 +438,7 @@ export default function BillingSubscriptionPage() {
               </div>
 
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500">
                   Activation Date
                 </span>
                 <p className="mt-1 text-sm font-extrabold text-slate-900 dark:text-white">
@@ -453,7 +453,7 @@ export default function BillingSubscriptionPage() {
               </div>
 
               <div className="col-span-2 sm:col-span-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500">
                   Renewal / Expiry Date
                 </span>
                 <p className="mt-1 text-sm font-extrabold text-slate-900 dark:text-white">
@@ -591,7 +591,7 @@ export default function BillingSubscriptionPage() {
                   }`}
                 >
                   {plan.popular && (
-                    <span className="absolute -top-3 right-5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#ff6a1f] to-[#ff4400] px-3 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-sm">
+                    <span className="absolute -top-3 right-5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#ff6a1f] to-[#ff4400] px-3 py-0.5 text-[10px] font-bold text-white shadow-sm">
                       <CrownIcon size={11} />
                       <span>Most Popular Pro</span>
                     </span>
@@ -688,7 +688,7 @@ export default function BillingSubscriptionPage() {
             <div className="mt-5 overflow-x-auto">
               <table className="w-full min-w-[680px] border-collapse text-left text-xs">
                 <thead>
-                  <tr className="border-b border-black/[0.06] dark:border-white/[0.08] text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                  <tr className="border-b border-black/[0.06] dark:border-white/[0.08] text-[11px] font-bold text-slate-500 dark:text-zinc-400">
                     <th className="py-3 px-3">Invoice / Pack</th>
                     <th className="py-3 px-3">Characters</th>
                     <th className="py-3 px-3">Amount</th>
@@ -793,7 +793,7 @@ export default function BillingSubscriptionPage() {
           >
             <div className="flex items-start justify-between border-b border-slate-100 dark:border-zinc-800 pb-3">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-wider text-[#ff5500]">
+                <p className="text-xs font-bold text-[#ff5500]">
                   Official Receipt
                 </p>
                 <h3 className="text-lg font-black text-slate-950 dark:text-white">

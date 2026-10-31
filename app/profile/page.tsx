@@ -82,7 +82,7 @@ export default function MyProfilePage() {
       const fallbackDisplay = formatDisplayName(fallbackUsername);
       const meta = authUser.user_metadata || {};
 
-      setFullName(meta.full_name || fallbackDisplay);
+      setFullName(meta.full_name ? formatDisplayName(meta.full_name) : fallbackDisplay);
       setDisplayName(meta.display_name || fallbackUsername);
       setRoleTitle(meta.role || "");
       setOrganization(meta.organization || "");
@@ -272,7 +272,7 @@ export default function MyProfilePage() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 dark:text-white">
-                    {fullName || "My Profile"}
+                    {fullName ? formatDisplayName(fullName) : "My Profile"}
                   </h1>
 
                   <span
@@ -348,7 +348,7 @@ export default function MyProfilePage() {
               <div className="mt-6 pt-5 border-t border-black/[0.06] dark:border-white/[0.07]">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                    <p className="text-xs font-bold text-slate-500 dark:text-zinc-400">
                       Account Character Balance
                     </p>
                     <p className="mt-0.5 text-xl sm:text-2xl font-black text-slate-950 dark:text-white">

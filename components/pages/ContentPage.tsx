@@ -17,7 +17,7 @@ export default function ContentPage({
     <main className="flex-1 bg-transparent">
       <article className="mx-auto max-w-3xl px-5 py-16 lg:px-8">
         {eyebrow && (
-          <p className="text-xs sm:text-sm font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+          <p className="text-xs sm:text-sm font-bold text-orange-600 dark:text-orange-400">
             {eyebrow}
           </p>
         )}

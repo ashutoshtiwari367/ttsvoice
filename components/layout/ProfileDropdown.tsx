@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { extractUsername, formatDisplayName } from "@/lib/user";
 import { PAID_FEATURES_CONTROL } from "@/config/control";
 import {
   getCachedAllowance,
@@ -315,11 +316,13 @@ export default function ProfileDropdown({
     await onSignOut();
   };
 
-  const customName = (
+  const rawCustomName = (
     user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
     user.user_metadata?.display_name ||
-    ""
+    (user.email ? extractUsername(user.email) : "")
   ).trim();
+  const customName = rawCustomName ? formatDisplayName(rawCustomName) : "";
 
   return (
     <div
@@ -387,7 +390,7 @@ export default function ProfileDropdown({
                 </Link>
 
                 {isPro && (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/35 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/35 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
                     <CrownIcon size={11} />
                     <span>Pro</span>
                   </span>

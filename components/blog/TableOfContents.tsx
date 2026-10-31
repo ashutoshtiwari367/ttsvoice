@@ -127,7 +127,7 @@ export default function TableOfContents({ headings }: TableOfContentsProps) {
         <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-white/60 dark:bg-[#0d0d14]/60 backdrop-blur-xl p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4 pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
             <span className="h-2 w-2 rounded-full bg-[#ff5500] animate-pulse" />
-            <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-900 dark:text-zinc-200">
+            <h4 className="text-xs font-bold text-slate-900 dark:text-zinc-200">
               Contents
             </h4>
             <span className="ml-auto text-[10px] font-semibold text-slate-400 dark:text-zinc-500 rounded-full px-2 py-0.5 bg-black/[0.04] dark:bg-white/[0.06]">

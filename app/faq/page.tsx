@@ -39,7 +39,7 @@ export default function FAQPage() {
     <main className="flex-1 py-16 sm:py-20">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
         {/* Eyebrow */}
-        <span className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#ff5500]">
+        <span className="text-xs font-bold text-[#ff5500]">
           FAQ
         </span>
 

@@ -44,7 +44,7 @@ export default function LanguageCarousel() {
   return (
     <div className="relative mt-12 sm:mt-14 w-full overflow-hidden py-4">
       {/* Subtle eyebrow heading */}
-      <div className="mb-5 flex items-center justify-center gap-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 dark:text-zinc-500">
+      <div className="mb-5 flex items-center justify-center gap-2.5 text-[11px] font-bold text-slate-400 dark:text-zinc-500">
         <span className="dot-live" />
         <span>50+ Supported Regional &amp; Global Accents • Click to Listen</span>
       </div>

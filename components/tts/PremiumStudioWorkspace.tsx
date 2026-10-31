@@ -11,6 +11,7 @@ import ThemeToggle from "@/components/theme/ThemeToggle";
 import ProfileDropdown from "@/components/layout/ProfileDropdown";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import { formatDisplayName } from "@/lib/user";
 
 interface PremiumStudioWorkspaceProps {
   initialText?: string;
@@ -175,10 +176,10 @@ export default function PremiumStudioWorkspace({
           setUserEmail(email);
           const metaName = u.user_metadata?.full_name || u.user_metadata?.name;
           if (metaName) {
-            setUserName(metaName);
+            setUserName(formatDisplayName(metaName));
           } else if (email) {
             const raw = email.split("@")[0].replace(/[._-]/g, " ");
-            setUserName(raw.charAt(0).toUpperCase() + raw.slice(1));
+            setUserName(formatDisplayName(raw));
           }
         } else {
           setIsLoggedIn(false);
@@ -416,7 +417,8 @@ export default function PremiumStudioWorkspace({
     }
   };
 
-  const maxChars = 5000;
+  // Character limits: Guest (Without Login): 500 chars, Registered (With Login): 1,000 chars
+  const maxChars = isLoggedIn ? 1000 : 500;
   const charCount = text.length;
   const isOverLimit = charCount > maxChars;
   const extraChars = isOverLimit ? charCount - maxChars : 0;
@@ -506,7 +508,7 @@ export default function PremiumStudioWorkspace({
             {/* Quick search popup */}
             {searchFocused && (
               <div className="absolute left-0 right-0 top-full mt-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121520] p-2 shadow-xl z-50 animate-fadeIn text-xs">
-                <div className="p-1.5 font-bold text-[10px] uppercase tracking-wider text-slate-400">
+                <div className="p-1.5 font-bold text-[10px] text-slate-400">
                   Quick Voices
                 </div>
                 {ALL_LANGUAGES_CATALOG.slice(0, 3).map((l) =>
@@ -1156,7 +1158,7 @@ export default function PremiumStudioWorkspace({
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-slate-100 dark:border-zinc-800/80 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-zinc-500 bg-slate-50/40 dark:bg-white/[0.01]">
+                  <tr className="border-b border-slate-100 dark:border-zinc-800/80 text-[11px] font-bold text-slate-500 dark:text-zinc-400 bg-slate-50/40 dark:bg-white/[0.01]">
                     <th className="py-2.5 px-4 w-10">#</th>
                     <th className="py-2.5 px-4">Title</th>
                     <th className="py-2.5 px-4">Language</th>

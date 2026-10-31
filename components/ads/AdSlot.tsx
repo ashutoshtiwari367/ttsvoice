@@ -98,11 +98,11 @@ export default function AdSlot({
       className={`sponsor-commercial-wrapper my-6 w-full ${className}`}
     >
       {/* ── Top Ad Space Banner Header ── */}
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-2 text-[10px] font-bold text-slate-500 dark:text-zinc-400">
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1 rounded-md bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-400">
             <span className="inline-block size-1.5 rounded-full bg-amber-500 animate-pulse" />
-            <span>📢 ADVERTISEMENT SPACE</span>
+            <span>📢 Advertisement Space</span>
           </span>
           <span className="hidden sm:inline text-slate-400 dark:text-zinc-500">•</span>
           <span className="text-slate-600 dark:text-zinc-400 font-bold">{label}</span>
@@ -124,8 +124,8 @@ export default function AdSlot({
         className={`relative ${MIN_HEIGHT[format]} w-full flex-col justify-center overflow-hidden rounded-2xl border-2 border-dashed border-amber-500/30 dark:border-amber-400/20 bg-gradient-to-r from-amber-500/[0.03] via-white to-slate-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 shadow-md transition hover:border-amber-500/60`}
       >
         {/* Subtle Watermark on corner */}
-        <div className="pointer-events-none absolute top-1.5 right-2 text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-zinc-700 select-none">
-          SPONSORED AD
+        <div className="pointer-events-none absolute top-1.5 right-2 text-[9px] font-bold text-slate-300 dark:text-zinc-700 select-none">
+          Sponsored Ad
         </div>
 
         {/* Ad Content */}

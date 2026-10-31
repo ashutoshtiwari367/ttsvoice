@@ -22,9 +22,9 @@ export default function AdSpacePromo({ className = "" }: AdSpacePromoProps) {
       <div className="relative overflow-hidden rounded-[28px] border border-orange-200/80 dark:border-orange-900/40 bg-gradient-to-b from-[#fffbf8] via-[#fff5ed] to-[#ffede0] dark:from-[#1b1410] dark:via-[#16100c] dark:to-[#120c09] p-5 sm:p-6 shadow-xl shadow-orange-500/5 flex flex-col justify-between min-h-[580px]">
         {/* Top Header Tag */}
         <div>
-          <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#ff5500]">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#ff5500]">
             <span className="text-xs">◆</span>
-            <span>AD SPACE</span>
+            <span>Ad Space</span>
           </div>
 
           {/* Heading */}

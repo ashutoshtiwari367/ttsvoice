@@ -26,8 +26,8 @@ export default function Languages() {
     <section id="languages" className="py-16 sm:py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center">
         {/* Eyebrow */}
-        <span className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#ff5500]">
-          GLOBAL &amp; INDIAN CATALOG
+        <span className="text-xs font-bold text-[#ff5500]">
+          Global &amp; Indian Catalog
         </span>
 
         {/* Heading */}

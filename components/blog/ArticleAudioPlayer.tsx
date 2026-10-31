@@ -95,7 +95,7 @@ export default function ArticleAudioPlayer({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5">
               <span className="dot-live" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#ff5500] dark:text-orange-400">
+              <span className="text-[11px] font-bold text-[#ff5500] dark:text-orange-400">
                 {isPlaying ? "Playing Narration" : "Listen to Article"}
               </span>
             </div>
@@ -173,7 +173,7 @@ export default function ArticleAudioPlayer({
 
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#ff5500] dark:text-orange-400">
+              <span className="text-xs font-bold text-[#ff5500] dark:text-orange-400">
                 {isPlaying ? "Now Playing" : "Listen to this article"}
               </span>
               <span className="text-[10px] rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-600 dark:text-orange-300 font-semibold">

@@ -39,7 +39,7 @@ export default async function BlogPage() {
 
       {/* Header */}
       <div className="text-center mb-16">
-        <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-[#ff5500] dark:text-orange-400 backdrop-blur-md">
+        <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-4 py-1.5 text-xs font-bold text-[#ff5500] dark:text-orange-400 backdrop-blur-md">
           <span className="dot-live" />
           <span>Editorial &amp; Resources</span>
         </div>
@@ -102,7 +102,7 @@ export default async function BlogPage() {
                 {/* Card Body */}
                 <div className="flex flex-1 flex-col p-6 sm:p-7">
                   <div className="flex items-center justify-between text-xs text-slate-400 dark:text-zinc-500 mb-3">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#ff5500] dark:text-orange-400">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 px-2.5 py-0.5 text-[10px] font-bold text-[#ff5500] dark:text-orange-400">
                       {post.category || "Article"}
                     </span>
                     <span>{post.readingTime}</span>

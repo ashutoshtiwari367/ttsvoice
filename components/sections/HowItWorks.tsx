@@ -21,7 +21,7 @@ export default function HowItWorks() {
     <section className="relative py-20 sm:py-24 border-t border-black/[0.06] dark:border-white/[0.08] overflow-hidden">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center">
         {/* Eyebrow */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-[0.2em] text-[#ff5500] dark:text-orange-400">
+        <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3.5 py-1 text-xs font-bold text-[#ff5500] dark:text-orange-400">
           <span>Effortless Workflow</span>
         </div>
 
@@ -44,7 +44,7 @@ export default function HowItWorks() {
                 <span className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#ff6a1f] to-[#ff4400] text-sm font-black text-white shadow-lg shadow-orange-500/30">
                   {item.step}
                 </span>
-                <span className="text-xs uppercase tracking-widest text-slate-400 dark:text-zinc-500 font-bold">
+                <span className="text-xs text-slate-400 dark:text-zinc-500 font-bold">
                   Step {item.step}
                 </span>
               </div>

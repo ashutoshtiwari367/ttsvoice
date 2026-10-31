@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { PAID_FEATURES_CONTROL } from "@/config/control";
 import AdminPanelLayout from "@/components/layout/AdminPanelLayout";
 import { getEmailAvatarLetter } from "@/lib/userPreferences";
+import { formatDisplayName } from "@/lib/user";
 import {
   CheckIcon,
   CrownIcon,
@@ -154,10 +155,10 @@ export default function AccountPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
-                  {data.displayName || data.username}
+                  {formatDisplayName(data.displayName || data.username)}
                 </h1>
-                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
-                  {data.tier}
+                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                  {data.tier === "paid" ? "Pro" : data.tier === "free" ? "Free" : formatDisplayName(data.tier)}
                 </span>
                 {data.customerNo && (
                   <span className="hidden sm:inline-block font-mono text-[11px] text-zinc-400 dark:text-zinc-500">
@@ -498,7 +499,7 @@ export default function AccountPage() {
                       <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">Public profile identifier</p>
                     </div>
                     <span className="font-bold text-zinc-900 dark:text-white">
-                      {data.displayName || data.username}
+                      {formatDisplayName(data.displayName || data.username)}
                     </span>
                   </div>
 
@@ -508,7 +509,7 @@ export default function AccountPage() {
                       <p className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5">System account handle</p>
                     </div>
                     <span className="font-mono text-xs text-zinc-600 dark:text-zinc-300">
-                      @{data.username}
+                      @{data.username.toLowerCase()}
                     </span>
                   </div>
 
@@ -744,9 +745,9 @@ export default function AccountPage() {
                               })}
                             </td>
                             <td className="py-3 px-3 text-right">
-                              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                                 <span>✓</span>
-                                <span>{item.status}</span>
+                                <span>{item.status ? (item.status.charAt(0).toUpperCase() + item.status.slice(1).toLowerCase()) : "Completed"}</span>
                               </span>
                             </td>
                           </tr>

@@ -71,7 +71,7 @@ export default function Hero() {
 
       {/* Sponsored Ad Box — polished glass container */}
       <div className="mx-auto mt-12 max-w-3xl rounded-3xl border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] py-8 px-6 text-center backdrop-blur-md transition-all hover:border-orange-500/30">
-        <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400 dark:text-zinc-500">
+        <div className="text-[10px] font-bold text-slate-400 dark:text-zinc-500">
           Sponsored Space
         </div>
         <div className="mt-2 text-xs font-semibold text-slate-400 dark:text-zinc-500">

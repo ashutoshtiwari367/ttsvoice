@@ -68,7 +68,7 @@ export default function PremiumSidebar({
               ⚡
             </span>
             <div>
-              <div className="text-[11px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+              <div className="text-[11px] font-bold text-orange-600 dark:text-orange-400">
                 Studio Admin Panel
               </div>
               <div className="text-sm font-extrabold text-slate-900 dark:text-white">
@@ -95,7 +95,7 @@ export default function PremiumSidebar({
 
           <div className="mt-2 flex items-baseline justify-between">
             <div>
-              <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-zinc-500">
+              <div className="text-[10px] font-bold text-slate-400 dark:text-zinc-500">
                 Voice Credit Balance
               </div>
               <div className="text-2xl font-black text-slate-950 dark:text-white tracking-tight">
@@ -119,7 +119,7 @@ export default function PremiumSidebar({
 
         {/* 3. Admin Panel Quick Navigation */}
         <div className="space-y-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-2 mb-1.5">
+          <div className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 px-2 mb-1.5">
             Admin Navigation
           </div>
 
@@ -171,7 +171,7 @@ export default function PremiumSidebar({
 
         {/* 4. Pro Audio Suite Controls */}
         <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.08] space-y-3.5">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-2">
+          <div className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 px-2">
             Pro Audio Controls
           </div>
 
@@ -272,7 +272,7 @@ export default function PremiumSidebar({
 
         {/* 5. Quick Pro Voice Presets */}
         <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.08] space-y-2.5">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-2">
+          <div className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 px-2">
             1-Click Pro Presets
           </div>
 

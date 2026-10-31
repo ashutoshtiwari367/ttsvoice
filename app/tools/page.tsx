@@ -46,8 +46,8 @@ export default function ToolsPage() {
     <main className="flex-1 py-16 sm:py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
-          <span className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#ff5500]">
-            AI VOICE TOOLS
+          <span className="text-xs font-bold text-[#ff5500]">
+            AI Voice Tools
           </span>
           <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             Creator Studio Tools

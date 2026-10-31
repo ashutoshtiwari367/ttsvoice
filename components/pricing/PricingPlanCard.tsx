@@ -29,7 +29,7 @@ export default function PricingPlanCard({
         </div>
       )}
 
-      <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
         {name}
       </p>
 

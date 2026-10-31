@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { extractUsername, formatDisplayName } from "@/lib/user";
 import { PAID_FEATURES_CONTROL } from "@/config/control";
 import {
   clearAccountClientCaches,
@@ -266,11 +267,13 @@ export default function AdminPanelLayout({
   };
 
   const avatarLetter = getEmailAvatarLetter(user?.email || null);
-  const displayName =
+  const rawName =
     sub?.displayName ||
     user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
     user?.user_metadata?.display_name ||
-    (user?.email ? user.email.split("@")[0] : "Account");
+    (user?.email ? extractUsername(user.email) : "Account");
+  const displayName = formatDisplayName(rawName);
 
   const isPro =
     paidEnabled && (sub?.tier === "paid" || (sub?.balance ?? 0) > 0);
@@ -303,8 +306,8 @@ export default function AdminPanelLayout({
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
               <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              Admin Panel
+              <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">
+                Admin Panel
               </span>
             </div>
 
@@ -332,12 +335,12 @@ export default function AdminPanelLayout({
                   {displayName}
                 </p>
                 {isPro ? (
-                  <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
                     <CrownIcon size={9} />
                     <span>Pro</span>
                   </span>
                 ) : (
-                  <span className="inline-flex shrink-0 items-center rounded-full bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+                  <span className="inline-flex shrink-0 items-center rounded-full bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold text-zinc-600 dark:text-zinc-400">
                     Free
                   </span>
                 )}
@@ -487,7 +490,7 @@ export default function AdminPanelLayout({
             {avatarLetter}
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-orange-600 dark:text-orange-400 block leading-tight">
+            <span className="text-[11px] font-bold text-orange-600 dark:text-orange-400 block leading-tight">
               Admin Panel
             </span>
             <p className="truncate text-xs font-bold text-zinc-900 dark:text-white">

@@ -109,11 +109,14 @@ export default function GenerateButton({
 
       {/* Micro-hint under button */}
       {isOverLimit ? (
-        <p className="mt-2 text-center text-xs font-bold text-red-600 dark:text-red-400 animate-fadeIn">
-          {userType === "guest"
-            ? CHAR_LIMIT_CONTROL.guestGenerateSubtext
-            : CHAR_LIMIT_CONTROL.loggedInGenerateSubtext}
-        </p>
+        userType === "guest" ? (
+          <p className="mt-2 text-center text-xs font-bold text-red-600 dark:text-red-400 animate-fadeIn">
+            {CHAR_LIMIT_CONTROL.guestGenerateSubtext}
+          </p>
+        ) : (
+          /* CHAR_LIMIT_CONTROL.loggedInGenerateSubtext usage commented out */
+          null
+        )
       ) : !disabled && !generating ? (
         <p className="mt-2 text-center text-[11px] font-medium text-slate-400 dark:text-zinc-500">
           Fast Neural Generation • High Quality MP3 Download
